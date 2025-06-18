@@ -1,3 +1,19 @@
+# 🧪 Equilibria: Distillation Simulation Frontend
+
+## Running App Locally
+
+### 1. **Start the backend server** in your terminal: 
+
+```bash
+uvicorn main:app --reload
+```
+
+### 2. **Open a second terminal** and run the Streamlit frontend
+```bash
+streamlit run app.py
+```
+> **Make sure your virtual environment is activated in both terminals.**
+
 # 🧪 Equilibria: Distillation Simulation Backend
 
 This repository contains the core backend logic, unit operations, simulation models, and tests for the Equilibria's MVP — a lightweight, modular simulation platform for educational, industry, and early R&D use cases.
@@ -49,7 +65,7 @@ distillation_sim_v1/
 │   ├── simulation/          # Flowsheet and integration logic
 │   ├── tests/               # Full test suite (pytest)
 │
-├── main.py                  # Entry point or FastAPI integration
+├── main.py                  # Entry point and FastAPI integration
 ├── requirements.txt         # Python dependencies
 ├── .gitignore               # Ignore IDE/system junk
 └── READ_ME_DOC_GUIDE.md     # Documentation styling guide
@@ -72,7 +88,7 @@ pytest backend/tests/
 
 - **Avoid pushing system/IDE files** (`__pycache__`, `.idea/`, `.DS_Store`, etc.).
 
-- **Please update the README.md or add comments** to new modules when contributing major changes.
+- **Please update appropriate READ_ME.md or add comments** to new modules when contributing major changes.
 
 ---
 
