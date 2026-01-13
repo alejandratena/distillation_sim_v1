@@ -11,7 +11,7 @@ def draw_column_visual(feed_flow, feed_comp, distillate, bottoms):
     fig, ax = plt.subplots(figsize=(4, 6))
 
     # Draw column body
-    ax.plot([0.5, 0.5], [0.2, 0.8], color='black', linewidth=10)
+    ax.plot([0.5, 0.5], [0.5, 0.5], color='black', linewidth=10)
     ax.text(0.53, 0.5, "Column", rotation=90, fontsize=10, verticalalignment='center')
 
     # Feed stream (left middle)

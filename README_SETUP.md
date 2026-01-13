@@ -1,23 +1,28 @@
-# 🧪 Equilibria: Distillation Simulation Frontend
+# Equilibria: Distillation Simulation Platform
 
-## Running App Locally
+Equilibria is a modular chemical engineering simulation platform designed to model separation processes with **progressive realism**.
+This MVP demonstrates a binary distillation column with a FastAPI backend, validated unit operations, and a Streamlit-based interactive frontend.
 
-### 1. **Start the backend server** in your terminal: 
+**Tech Stack:** Python · FastAPI · Streamlit · pytest · CoolProp (thermophysical properties)
+
+## Backend (FastAPI + Simulation Core)
+
+### 1. Start the backend server (Terminal 1)
 
 ```bash
 uvicorn main:app --reload
 ```
+- FastAPI backend runs at: http://localhost:8000
 
-### 2. **Open a second terminal** and run the Streamlit frontend
+## Frontend (Streamlit)
+
+### 2. Start Streamlit Frontend (Terminal 2)
 ```bash
 streamlit run app.py
 ```
-> **Make sure your virtual environment is activated in both terminals.**
+- Streamlit frontend runs at: http://localhost:8501
 
-# 🧪 Equilibria: Distillation Simulation Backend
-
-This repository contains the core backend logic, unit operations, simulation models, and tests for the Equilibria's MVP — a lightweight, modular simulation platform for educational, industry, and early R&D use cases.
-
+> ⚠️**Make sure your virtual environment is activated in both terminals.**
 ---
 
 ## Quick Start
@@ -28,8 +33,6 @@ This repository contains the core backend logic, unit operations, simulation mod
 git clone git@github.com:alejandratena/distillation_sim_v1.git
 cd distillation_sim_v1
 ```
-
-> **🔒 You must be added as a collaborator to access this private repo.**
 
 ### 2. Create and activate a virtual environment
 
@@ -66,10 +69,11 @@ distillation_sim_v1/
 │   ├── tests/               # Full test suite (pytest)
 │
 ├── main.py                  # Entry point and FastAPI integration
+├── app.py                   # Streamlit Frontend
 ├── requirements.txt         # Python dependencies
 ├── .gitignore               # Ignore IDE/system junk
-└── READ_ME_DOC_GUIDE.md     # Documentation styling guide
-└── READ_ME_SETUP.md         # You're here!
+└── README.md                # Documentation styling guide
+└── README_SETUP.md          # You're here!
 ```
 
 ---
@@ -94,6 +98,4 @@ pytest backend/tests/
 
 ## Contact
 
-**Questions? Ideas?** DM or @ Alejandra (@alejandratena).
-
-**Let's build the future of process simulation** ✨
+**Questions? Ideas?** DM or @alejandratena

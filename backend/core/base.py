@@ -71,7 +71,7 @@ class Stream:
 
 
     def component_flow_rate(self) -> Dict[str, float]:
-        """Calculate individual component flow rates.
+        """Calculates individual component flow rates.
 
         Returns
         -------
@@ -92,7 +92,7 @@ class Stream:
 
 
     def enthalpy(self) -> float:
-        """Calculate total stream enthalpy using CoolProp.
+        """Calculates total stream enthalpy using CoolProp.
 
         Returns
         -------

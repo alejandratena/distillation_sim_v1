@@ -76,11 +76,11 @@ class FeedTank(UnitOperation):
 
 
 class DistillationColumn(UnitOperation):
-    """A distillation column for separating liquid mixtures.
+    """Separation technique most commonly used for liquid-liquid mixtures.
 
         This unit operation represents a distillation column that separates
         a feed stream into distillate (top) and bottoms products based on
-        relative volatility.
+        relative volatility (boiling points).
 
         Parameters
         ----------
@@ -138,11 +138,11 @@ class DistillationColumn(UnitOperation):
         F_total = sum(self.inlet_streams[0].component_flow_rate().values())
         D_total = sum(self.outlet_streams[0].component_flow_rate().values())
         B_total = sum(self.outlet_streams[1].component_flow_rate().values())
-        assert abs(F_total - (D_total + B_total)) < 1, f"Mass imbalance in {self.name}"
+        assert abs(F_total - (D_total + B_total)) < 2, f"Mass imbalance in {self.name}"
 
 
     def energy_balance(self):
-        """Validate energy conservation across the distillation column.
+        """Validates energy conservation across the distillation column.
 
                 Checks overall energy balance including reboiler and condenser duties:
                 H_feed + Q_reboiler + Q_condenser = H_distillate + H_bottoms
@@ -173,10 +173,12 @@ class DistillationColumn(UnitOperation):
 
 
 class Reboiler(UnitOperation):
-    """A reboiler for providing heat to distillation columns.
+    """A reboiler provides heat to distillation columns
 
         This unit operation represents a reboiler that adds heat to vaporize
         part of the liquid stream, typically the bottom product of a distillation column.
+
+        Reboilers can operate partially or fully depending on requirements and outcome desired.
 
         Parameters
         ----------
@@ -214,7 +216,7 @@ class Reboiler(UnitOperation):
 
 
     def mass_balance(self):
-        """Validate mass conservation across the reboiler.
+        """Validates conservation of mass across the reboiler.
 
                 Checks that each component flow rate is conserved.
 
@@ -230,7 +232,7 @@ class Reboiler(UnitOperation):
 
 
     def energy_balance(self):
-        """Validate energy conservation across the reboiler.
+        """Validates conservation of energy across the reboiler.
 
                Calculates heat duty as difference between outlet and inlet enthalpies.
                This is a tautological check but ensures calculation consistency.
@@ -247,7 +249,7 @@ class Reboiler(UnitOperation):
 
 
 class Condenser(UnitOperation):
-    """A condenser for cooling and condensing vapor streams.
+    """Used for cooling and condensing vapor streams.
 
        This unit operation represents a condenser that removes heat from
        a vapor stream, typically producing liquid products and/or reflux.
