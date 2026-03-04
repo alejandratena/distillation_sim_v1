@@ -1,6 +1,8 @@
 from typing import Dict
 import CoolProp.CoolProp as CP
 
+from backend.core.exceptions import DomainValidationError, ThermodynamicError
+
 class Stream:
     """A process stream containing one or more chemical components.
 
@@ -63,6 +65,49 @@ class Stream:
 
     def __init__(self, name: str, flow_rate: float, temperature: float,
                  pressure: float, composition: Dict[str, float]):
+        if flow_rate < 0:
+            raise DomainValidationError(
+                "Flow rate must be non-negative (kg/h)",
+                {"flow_rate": flow_rate}
+            )
+
+        if temperature <= -273.15:
+            raise DomainValidationError(
+                "Temperature must be above absolute zero (°C)",
+                {"temperature": temperature}
+            )
+
+        if pressure < 0:
+            raise DomainValidationError(
+                "Pressure must be non-negative (kPa)",
+                {"pressure": pressure}
+            )
+        if not composition:
+            raise DomainValidationError(
+                "Composition must not be empty",
+                {"composition": composition}
+            )
+
+        for component, fraction in composition.items():
+
+            if not isinstance(component, str) or not component.strip():
+                raise DomainValidationError(
+                    "Component names must be non-empty strings",
+                    {"component": component}
+                )
+
+            if fraction < 0.0 or fraction > 1.0:
+                raise DomainValidationError(
+                    "Each composition fraction must be between 0.0 and 1.0",
+                    {"component": component, "fraction": fraction}
+                )
+
+        if abs(sum(composition.values()) - 1.0) > 1e-6:
+            raise DomainValidationError(
+                "Composition must sum to 1.0",
+                {"composition": composition}
+            )
+
         self.name = name
         self.flow_rate = flow_rate  # kg/h
         self.temperature = temperature  # °C
@@ -128,7 +173,10 @@ class Stream:
                 flow_kg_h = self.flow_rate * self.composition[comp]
                 total_enthalpy += h_kJ_kg * flow_kg_h
             except Exception as e:
-                raise ValueError(f"CoolProp failed for {comp}: {e}")
+                raise ThermodynamicError(
+                    f"CoolProp failed for component '{comp}'",
+                    {"component": comp, "temperature_C":self.temperature, "pressure_kPa": self.pressure, "error": str(e)}
+                ) from e
         return total_enthalpy
 
 

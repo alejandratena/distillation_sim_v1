@@ -21,7 +21,7 @@ class DomainValidationError(EquilibriaError):
     """Raised when user/domain inputs violate invariants."""
 
 class ThermodynamicError(EquilibriaError):
-    """Raised when CoolProp/thermp property evaluation fails."""
+    """Raised when CoolProp/thermo property evaluation fails."""
 
 class BalanceError(EquilibriaError):
     """Raised when unit op or flowsheet balance fails to close."""
