@@ -77,9 +77,9 @@ class Stream:
                 {"temperature": temperature}
             )
 
-        if pressure < 0:
+        if pressure <= 0:
             raise DomainValidationError(
-                "Pressure must be non-negative (kPa)",
+                "Pressure must be positive (kPa)",
                 {"pressure": pressure}
             )
         if not composition:
@@ -160,7 +160,7 @@ class Stream:
 
         Raises
         ------
-        ValueError
+        ThermodynamicError
             If CoolProp fails to calculate properties for any component
         """
         total_enthalpy = 0
