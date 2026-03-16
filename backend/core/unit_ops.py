@@ -43,6 +43,20 @@ class FeedTank(UnitOperation):
         >>> tank.energy_balance()  # Validates energy conservation
         """
 
+    def __init__(self, name, inlet_streams, outlet_streams):
+        super().__init__(name, inlet_streams, outlet_streams)
+
+        if len(self.inlet_streams) != 1:
+            raise ValueError(f"{self.name} requires one inlet stream")
+
+        if len(self.outlet_streams) != 1:
+            raise ValueError(f"{self.name} requires one outlet stream")
+
+        inlet_components = set(self.inlet_streams[0].composition.keys())
+        outlet_components = set(self.outlet_streams[0].composition.keys())
+        if inlet_components != outlet_components:
+            raise ValueError(f"Inlet and outlet streams must have the same composition: {inlet_componenets} vs {outlet_components}")
+
 
     def mass_balance(self):
         """Validate mass conservation across the feed tank.
@@ -124,6 +138,20 @@ class DistillationColumn(UnitOperation):
         >>> column.mass_balance()
         >>> column.energy_balance()
         """
+    def __init__(self, name, inlet_streams, outlet_streams):
+        super().__init__(name, inlet_streams, outlet_streams)
+
+        if len(self.inlet_streams) != 1:
+            raise ValueError(f"{self.name} requires one inlet stream")
+
+        if len(self.outlet_streams) != 2:
+            raise ValueError(f"{self.name} requires two outlet streams")
+
+        inlet_components = set(self.inlet_streams[0].composition.keys())
+        distillate_components = set(self.outlet_streams[0].composition.keys())
+        bottom_components = set(self.outlet_streams[1].composition.keys())
+        if inlet_components != distillate_components or inlet_components != bottom_components:
+            raise ValueError(f"Inlet, distillate, and bottom streams must have the same composition: {inlet_components} vs {distillate_components} vs {bottom_components}")
 
     def mass_balance(self):
         """Validate mass conservation across the distillation column.
@@ -214,6 +242,23 @@ class Reboiler(UnitOperation):
         >>> reboiler.energy_balance()
         """
 
+    def __init__(self, name, inlet_streams, outlet_streams):
+        super().__init__(name, inlet_streams, outlet_streams)
+
+        if len(self.inlet_streams) != 1:
+            raise ValueError(f"{self.name} requires one inlet stream")
+
+        if len(self.outlet_streams) != 1:
+            raise ValueError(f"{self.name} requires one outlet stream")
+
+        inlet_components = set(self.inlet_streams[0].composition.keys())
+        outlet_components = set(self.outlet_streams[0].composition.keys())
+        if inlet_components != outlet_components:
+            raise ValueError(f"Inlet and outlet streams must have the same composition: {inlet_components} vs {outlet_components}")
+
+        # Assumes sensible heat transfer only, no phase change modeled.
+        if self.outlet_streams[0].temperature < self.inlet_streams[0].temperature:
+            raise ValueError(f"Outlet temperature must be greater than or equal to inlet temperature for {self.name}")
 
     def mass_balance(self):
         """Validates conservation of mass across the reboiler.
@@ -288,7 +333,21 @@ class Condenser(UnitOperation):
        >>> condenser.mass_balance()
        >>> condenser.energy_balance()
        """
+    def __init__(self, name, inlet_streams, outlet_streams):
+        super().__init__(name, inlet_streams, outlet_streams)
 
+        if len(self.inlet_streams) != 1:
+            raise ValueError(f"{self.name} requires one inlet stream")
+
+        if len(self.outlet_streams) < 1:
+            raise ValueError(f"{self.name} requires at least one outlet stream")
+
+        # Assumes sensible heat transfer only, no phase change modeled.
+        inlet_temperature = self.inlet_streams[0].temperature
+        for outlet_stream in self.outlet_streams:
+            if outlet_stream.temperature > inlet_temperature:
+                raise ValueError(
+                    f"Outlet temperature must be less than or equal to inlet temperature for {self.name}")
 
     def mass_balance(self):
         """Validate mass conservation across the condenser.
@@ -365,7 +424,24 @@ class HeatExchanger(UnitOperation):
        >>> hx.mass_balance()
        >>> hx.energy_balance()
        """
+    def __init__(self, name, inlet_streams, outlet_streams):
+        super().__init__(name, inlet_streams, outlet_streams)
 
+        if len(self.inlet_streams) != 2:
+            raise ValueError(f"{self.name} requires two inlet streams")
+
+        if len(self.outlet_streams) != 2:
+            raise ValueError(f"{self.name} requires two outlet streams")
+
+        hot_inlet_components = set(self.inlet_streams[0].composition.keys())
+        hot_outlet_components = set(self.outlet_streams[0].composition.keys())
+        cold_inlet_components = set(self.inlet_streams[1].composition.keys())
+        cold_outlet_components = set(self.outlet_streams[1].composition.keys())
+
+        if hot_inlet_components != hot_outlet_components:
+            raise ValueError(f"Hot inlet and hot outlet streams must have the same composition: {hot_inlet_components} vs {hot_outlet_components}")
+        if cold_inlet_components != cold_outlet_components:
+            raise ValueError(f"Cold inlet and cold outlet streams must have the same composition: {cold_inlet_components} vs {cold_outlet_components}")
 
     def mass_balance(self):
         """Validate mass conservation for both sides of the heat exchanger.
