@@ -1,6 +1,6 @@
-from .base import  UnitOperation, Stream, Chemical
+from .base import UnitOperation, Stream, Chemical
+from backend.core.exceptions import BalanceError
 import CoolProp.CoolProp as CP
-
 
 class FeedTank(UnitOperation):
     """A feed tank for storing and supplying process streams.
@@ -55,7 +55,8 @@ class FeedTank(UnitOperation):
         inlet_components = set(self.inlet_streams[0].composition.keys())
         outlet_components = set(self.outlet_streams[0].composition.keys())
         if inlet_components != outlet_components:
-            raise ValueError(f"Inlet and outlet streams must have the same composition: {inlet_componenets} vs {outlet_components}")
+            raise ValueError(f"Inlet and outlet streams must have the same composition: "
+                             f"{inlet_components} vs {outlet_components}")
 
 
     def mass_balance(self):
@@ -70,8 +71,21 @@ class FeedTank(UnitOperation):
               """
         inlet = self.inlet_streams[0].component_flow_rate() # multiple inlet/outlet streams possible. indexing for flexibility/scalability.
         outlet = self.outlet_streams[0].component_flow_rate()
-        assert sum(inlet.values()) == sum(outlet.values()), f"Mass imbalance in {self.name}"
 
+        inlet_total = sum(inlet.values())
+        outlet_total = sum(outlet.values())
+
+        if inlet_total != outlet_total:
+            raise BalanceError(
+                f"Mass imbalance in {self.name}", {
+                    "inlet_total": inlet_total,
+                    "outlet_total": outlet_total,})
+        return {
+            "inlet": inlet_total,
+            "outlet": outlet_total,
+            "difference": inlet_total - outlet_total,
+            "tolerance": 0.0
+        }
 
     def energy_balance(self):
         """Validate energy conservation across the feed tank.
@@ -86,7 +100,26 @@ class FeedTank(UnitOperation):
                 """
         H_in = self.inlet_streams[0].enthalpy()
         H_out = self.outlet_streams[0].enthalpy()
-        assert abs(H_in - H_out) < 1e-3,  f"Energy imbalance in {self.name}"
+        tolerance = 1e-3
+
+        if abs(H_in - H_out) >= tolerance:
+            raise BalanceError(
+                f"Energy imbalance in {self.name}",
+                {
+                    "H_in": H_in,
+                    "H_out": H_out,
+                    "difference": H_in - H_out,
+                    "tolerance": tolerance
+                }
+            )
+
+        return {
+            "inlet": H_in,
+            "outlet": H_out,
+            "difference": H_in - H_out,
+            "tolerance": tolerance
+        }
+
 
 
 class DistillationColumn(UnitOperation):
@@ -166,7 +199,19 @@ class DistillationColumn(UnitOperation):
         F_total = sum(self.inlet_streams[0].component_flow_rate().values())
         D_total = sum(self.outlet_streams[0].component_flow_rate().values())
         B_total = sum(self.outlet_streams[1].component_flow_rate().values())
-        assert abs(F_total - (D_total + B_total)) < 2, f"Mass imbalance in {self.name}"
+        tolerance = 2
+
+        if abs(F_total - (D_total + B_total)) >= tolerance:
+            raise BalanceError(
+                f"Mass imbalance in {self.name}", {
+                    "inlet_total": F_total,
+                    "outlet_total": D_total + B_total,})
+        return {
+            "inlet": F_total,
+            "outlet": D_total + B_total,
+            "difference": F_total - (D_total + B_total),
+            "tolerance": tolerance
+        }
 
 
     def energy_balance(self):
@@ -189,6 +234,7 @@ class DistillationColumn(UnitOperation):
         H_feed = self.inlet_streams[0].enthalpy()
         H_top = self.outlet_streams[0].enthalpy()
         H_bottom = self.outlet_streams[1].enthalpy()
+        tolerance = 1
 
         Q_reboiler = 1200  # kJ/h (positive)
         Q_condenser = -1100  # kJ/h (negative because it's heat removed)
@@ -196,8 +242,23 @@ class DistillationColumn(UnitOperation):
         lhs = H_feed + Q_reboiler + Q_condenser
         rhs = H_top + H_bottom
 
-        assert abs(lhs - rhs) < 1, f"Energy imbalance in {self.name}: "f"LHS={lhs:.2f}, RHS={rhs:.2f}"
-        print(f"H_feed: {H_feed}, H_top: {H_top}, H_bottom: {H_bottom}, LHS: {lhs}, RHS: {rhs}")
+        if abs(lhs - rhs) >= tolerance:
+            raise BalanceError(
+                f"Energy imbalance in {self.name}",
+                {
+                    "H_in": H_feed,
+                    "H_out": (H_top + H_bottom),
+                    "difference": lhs - rhs,
+                    "tolerance": tolerance
+                }
+            )
+
+        return {
+            "inlet": lhs,
+            "outlet": rhs,
+            "difference": lhs - rhs,
+            "tolerance": tolerance
+        }
 
 
 class Reboiler(UnitOperation):
@@ -254,7 +315,9 @@ class Reboiler(UnitOperation):
         inlet_components = set(self.inlet_streams[0].composition.keys())
         outlet_components = set(self.outlet_streams[0].composition.keys())
         if inlet_components != outlet_components:
-            raise ValueError(f"Inlet and outlet streams must have the same composition: {inlet_components} vs {outlet_components}")
+            raise ValueError(
+                f"Inlet and outlet streams must have the same composition: "
+                f"{inlet_components} vs {outlet_components}")
 
         # Assumes sensible heat transfer only, no phase change modeled.
         if self.outlet_streams[0].temperature < self.inlet_streams[0].temperature:
@@ -272,9 +335,20 @@ class Reboiler(UnitOperation):
                 """
         inlet = self.inlet_streams[0].component_flow_rate()
         outlet = self.outlet_streams[0].component_flow_rate()
-        for comp in inlet:
-            assert abs(inlet[comp]-outlet.get(comp, 0)) < 1e-3, f"Mass imbalance in {self.name}"
+        tolerance = 1e-3
 
+        for comp in inlet:
+            if abs(inlet[comp] - outlet.get(comp, 0)) >= tolerance:
+                raise BalanceError(
+                    f"Mass imbalance in {self.name}", {
+                        "inlet_total": inlet[comp],
+                        "outlet_total": outlet.get(comp, 0), })
+        return {
+                "inlet": sum(inlet.values()),
+                "outlet": sum(outlet.values()),
+                "difference": sum(inlet.values()) - sum(outlet.values()),
+                "tolerance": tolerance
+        }
 
     def energy_balance(self):
         """Validates conservation of energy across the reboiler.
@@ -287,11 +361,30 @@ class Reboiler(UnitOperation):
                AssertionError
                    If energy balance calculation is inconsistent within 1e-3 kJ/h tolerance
                """
+
         H_in = self.inlet_streams[0].enthalpy()
         H_out = self.outlet_streams[0].enthalpy()
         Q = H_out - H_in
-        assert abs(H_out - (H_in + Q)) < 1e-3, f"Energy imbalance in {self.name}"
+        tolerance = 1e-3
 
+        if abs(H_out - (H_in + Q)) >= tolerance:
+            raise BalanceError(
+                f"Energy imbalance in {self.name}",
+                {
+                    "H_in": H_in,
+                    "H_out": H_out,
+                    "Q": Q,
+                    "difference": H_out - (H_in + Q),
+                    "tolerance": tolerance,
+                }
+            )
+
+        return {
+            "inlet": H_in + Q,
+            "outlet": H_out,
+            "difference": H_out - (H_in + Q),
+            "tolerance": tolerance,
+        }
 
 class Condenser(UnitOperation):
     """Used for cooling and condensing vapor streams.
@@ -362,10 +455,33 @@ class Condenser(UnitOperation):
                 """
         inlet = self.inlet_streams[0].component_flow_rate()
         outlet_total = {}
-        for comp in inlet:
-            outlet_total[comp] = sum(out.component_flow_rate().get(comp, 0) for out in self.outlet_streams)
-            assert abs(inlet[comp] - outlet_total[comp]) < 1e-2, f"Mass imbalance for {comp} in {self.name}"
+        tolerance = 1e-2
 
+        for comp in inlet:
+            outlet_total[comp] = sum(
+                out.component_flow_rate().get(comp, 0) for out in self.outlet_streams
+            )
+            if abs(inlet[comp] - outlet_total[comp]) >= tolerance:
+                raise BalanceError(
+                    f"Mass imbalance for {comp} in {self.name}",
+                    {
+                        "component": comp,
+                        "inlet_flow": inlet[comp],
+                        "outlet_flow": outlet_total[comp],
+                        "difference": inlet[comp] - outlet_total[comp],
+                        "tolerance": tolerance,
+                    }
+                )
+
+        inlet_total = sum(inlet.values())
+        out_total = sum(outlet_total.values())
+
+        return {
+            "inlet": inlet_total,
+            "outlet": out_total,
+            "difference": inlet_total - out_total,
+            "tolerance": tolerance,
+        }
 
     def energy_balance(self):
         """Validate energy conservation across the condenser.
@@ -380,7 +496,25 @@ class Condenser(UnitOperation):
                 """
         H_in = self.inlet_streams[0].enthalpy()
         H_out = sum(s.enthalpy() for s in self.outlet_streams)
-        assert abs(H_out - H_in) < 1
+        tolerance = 1
+
+        if abs(H_out - H_in) >= tolerance:
+            raise BalanceError(
+                f"Energy imbalance in {self.name}",
+                {
+                    "H_in": H_in,
+                    "H_out": H_out,
+                    "difference": H_in - H_out,
+                    "tolerance": tolerance,
+                }
+            )
+
+        return {
+            "inlet": H_in,
+            "outlet": H_out,
+            "difference": H_in - H_out,
+            "tolerance": tolerance,
+        }
 
 
 class HeatExchanger(UnitOperation):
@@ -454,12 +588,39 @@ class HeatExchanger(UnitOperation):
                 AssertionError
                     If mass is not conserved on either side within 1e-3 kg/h tolerance
                 """
-        for i in range(2): #Hot side/Cold side (two sides)
+        tolerance = 1e-3
+        total_inlet = 0.0
+        total_outlet = 0.0
+
+        for i, label in enumerate(["hot", "cold"]):
             in_flows = self.inlet_streams[i].component_flow_rate()
             out_flows = self.outlet_streams[i].component_flow_rate()
-            for comp in in_flows:
-                assert abs(in_flows[comp] - out_flows.get(comp,0)) < 1e-3, f"Mass imbalance for {comp} in {self.name}"
 
+            for comp in in_flows:
+                diff = abs(in_flows[comp] - out_flows.get(comp, 0))
+                if diff >= tolerance:
+                    raise BalanceError(
+                        f"Mass imbalance for {comp} on {label} side in {self.name}",
+                        {
+                            "side": label,
+                            "component": comp,
+                            "inlet_flow": in_flows[comp],
+                            "outlet_flow": out_flows.get(comp, 0),
+                            "difference": in_flows[comp] - out_flows.get(comp, 0),
+                            "tolerance": tolerance,
+                        }
+                    )
+
+            total_inlet += sum(in_flows.values())
+            total_outlet += sum(out_flows.values())
+
+        return {
+            "inlet": total_inlet,
+            "outlet": total_outlet,
+            "difference": total_inlet - total_outlet,
+            "tolerance": tolerance,
+        }
+    
 
     def energy_balance(self):
         """Validate energy conservation across the heat exchanger.
@@ -480,7 +641,25 @@ class HeatExchanger(UnitOperation):
         cold_out = self.outlet_streams[1].enthalpy()
         Q_hot = hot_in - hot_out
         Q_cold = cold_out - cold_in
-        assert abs(Q_hot - Q_cold) < 1e-3, "Heat Exchanger energy imbalance"
+        tolerance = 1e-3
+
+        if abs(Q_hot - Q_cold) >= tolerance:
+            raise BalanceError(
+                f"Energy imbalance in {self.name}",
+                {
+                    "Q_hot": Q_hot,
+                    "Q_cold": Q_cold,
+                    "difference": Q_hot - Q_cold,
+                    "tolerance": tolerance,
+                }
+            )
+
+        return {
+            "inlet": Q_hot,  # heat released by hot side
+            "outlet": Q_cold,  # heat absorbed by cold side
+            "difference": Q_hot - Q_cold,
+            "tolerance": tolerance,
+        }
 
 
 class Flowsheet:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from email import message
 from typing import Any
 
 class EquilibriaError(Exception):
