@@ -1,236 +1,146 @@
-#
+# Equilibria: Distillation Simulation Platform
 
-# Documentation Style Guide
+Equilibria is a modular chemical engineering simulation platform for modeling separation processes with progressive realism — a design approach that allows systems to evolve from simplified academic assumptions to industry-grade physical accuracy.
 
-This guide defines documentation conventions for all Equilibria code to ensure clarity, scientific rigor, and extensibility.
+This MVP implements a binary distillation column with a structured backend, validated unit operations, and an interactive frontend for exploring system behavior.
 
-## General Rules
-- Use **NumPy-style docstrings** for all public **classes, methods, and functions**.
-- Indent with **4 spaces**.
-- Always include **units in square brackets**, e.g., `[kg/h]`, `[°C]`, `[kJ/h]`.
-- Organize **assumptions by category** (Thermodynamic, Physical, Numerical).
-- Use **blank lines** to visually separate major sections (`Parameters`, `Returns`, etc.).
+**Tech Stack:** Python · FastAPI · Streamlit · pytest · CoolProp
+
+---
+## System Overview
+
+Equilibria is built as a composable simulation system — unit operations encapsulate 
+physical behavior independently and can be assembled into flowsheets without tight 
+coupling between layers. The backend handles simulation execution and exposes endpoints 
+via FastAPI, while the core layer defines the unit operations themselves (`DistillationColumn`, 
+`HeatExchanger`, etc.) with embedded mass and energy balances. A separate simulation layer 
+orchestrates flowsheet logic and stream propagation, keeping unit op logic reusable across 
+different process configurations. The Streamlit frontend sits on top as a lightweight 
+interface for exploring system behavior.
+
+### Architecture Layers
+
+- **Backend (FastAPI)** — Handles simulation execution and exposes endpoints for flowsheet interaction
+- **Core Layer (`backend/core/`)** — Defines unit operations (e.g., `DistillationColumn`, `HeatExchanger`) with embedded mass and energy balances
+- **Simulation Layer (`backend/simulation/`)** — Orchestrates flowsheet logic, stream propagation, and system-level validation
+- **Frontend (Streamlit)** — Provides a lightweight interface for interacting with the simulation
+
+### Design Priorities
+
+- **Modularity** — unit operations can be extended or replaced independently
+- **Testability** — each unit operation is validated with pytest
+- **Transparency** — explicit balance checks with defined tolerances
+- **Extensibility** — architecture supports future non-ideal and ML-driven models
 
 ---
 
-## Required Sections (in order, when applicable)
+## Design Decisions
 
-### 1. Parameters
+FastAPI was chosen over Flask for its native Pydantic type validation and support for 
+async scaling as the platform grows. Streamlit handles the MVP frontend — it was the 
+fastest path to an interactive UI, with a React replacement planned for production. 
 
-**Purpose:**  
-Describes each input variable passed to the function or method.
-
-**Structure:**
-```text
-parameter_name : type
-    Description. [units]
-```
-
-**Example:**
-```text
-flow_rate : float
-    Total mass flow rate. [kg/h]
-```
+On the simulation side, balance validation uses tolerance-based checks rather than strict 
+equality because floating-point arithmetic makes exact comparison unreliable at engineering 
+precision. CoolProp drives thermophysical property evaluation, which is what enables the 
+platform's core promise: a clean path from ideal to real-fluid behavior without rearchitecting 
+the system.
 
 ---
 
-### 2. Assumptions
+## Quick Start
 
-**Purpose:**  
-Outlines modeling and theoretical assumptions grouped by domain.
-
-**Structure:**
-```text
-Thermodynamic:
-    - Assumption 1
-    - Assumption 2
-
-Physical:
-    - Assumption 1
-    - Assumption 2
-
-Numerical:
-    - Assumption 1
-    - Assumption 2
+### 1. Clone the repository
+```bash
+git clone git@github.com:alejandratena/distillation_sim_v1.git
+cd distillation_sim_v1
 ```
 
-**Example:**
-```text
-Thermodynamic:
-    - Ideal mixing (no excess enthalpy)
-    - No pressure effects on properties
+### 2. Create and activate a virtual environment
 
-Physical:
-    - Single-phase flow
-    - Homogeneous composition
-
-Numerical:
-    - Mass fractions sum to 1.0 ± 1e-6
-    - Pressure in range [0.1, 1000] kPa
+**Mac/Linux:**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
----
-
-### 3. Notes
-
-**Purpose:**  
-Highlights engineering simplifications or modeling constraints that are not formal assumptions.
-
-**Structure:**
-```text
-- Note 1
-- Note 2
+**Windows:**
+```bash
+python -m venv .venv
+.venv\Scripts\activate
 ```
 
-**Example:**
-```text
-- Heat losses are not modeled
-- Pressure assumed constant within unit operation
-- No phase separation logic implemented
+### 3. Install dependencies
+```bash
+pip install -r requirements.txt
 ```
 
 ---
 
-### 4. Returns
+## Running the Application
 
-**Purpose:**  
-Describes what the function returns and its units.
+> ⚠️ Activate your virtual environment in both terminals before starting.
 
-**Structure:**
-```text
-return_type
-    Description. [units]
+**Terminal 1 — Backend (FastAPI):**
+```bash
+uvicorn main:app --reload
+```
+Runs at: http://localhost:8000
+
+**Terminal 2 — Frontend (Streamlit):**
+```bash
+streamlit run app.py
+```
+Runs at: http://localhost:8501
+
+---
+
+## Running Tests
+```bash
+pytest backend/tests/
 ```
 
-**Example:**
-```text
-float
-    Total stream enthalpy. [kJ/h]
+The test suite validates:
+- Mass balance consistency across unit operations
+- Energy balance behavior under defined tolerances
+- System-level integration between connected units
+
+---
+
+## Project Structure
+```
+distillation_sim_v1/
+├── backend/
+│   ├── core/          # Unit operations and base classes
+│   ├── simulation/    # Flowsheet orchestration logic
+│   └── tests/         # Pytest validation suite
+├── main.py            # FastAPI entry point
+├── app.py             # Streamlit frontend
+├── requirements.txt
+└── README_SETUP.md
 ```
 
 ---
 
-### 5. Raises
+## Roadmap
 
-**Purpose:**  
-Documents potential errors or exceptions raised by the function or method.
-
-**Structure:**
-```text
-ErrorType
-    Description of when/why it is raised.
-```
-
-**Example:**
-```text
-ValueError
-    If mass fractions do not sum to 1.0 ± 1e-6.
-```
+- Non-ideal thermodynamics (γ–φ, EOS-based models)
+- Recycle streams and convergence algorithms
+- React-based frontend with interactive flowsheet builder
+- Simulation persistence (database integration)
+- ML-assisted parameter estimation and optimization
+- "Progressive realism" UI controls for toggling model assumptions
 
 ---
 
-### 6. Examples
+## Contributing
 
-**Purpose:**  
-Provides a reproducible code example using triple angle brackets (`>>>`) in doctest format.
-
-**Structure:**
-```python
->>> Examples
---------
->>> object = ClassName(args)
->>> object.method()
->>> expected_output
-```
-
-**Example:**
-```python
->>> stream = Stream("Feed", 100, 25, 101.3, {"Water": 1.0})
->>> stream.enthalpy()
-104500.0  # [kJ/h]
-```
+- Use small, descriptive commits grouped by functionality
+- Avoid committing system/IDE files (`.idea/`, `__pycache__/`, `.DS_Store`)
+- Document new modules or major changes with inline comments or README updates
 
 ---
 
-## 🧠 Optional Sections
+## Contact
 
-### Notes
-
-**Purpose:**  
-Additional context, theoretical background, or calculation details.
-
-**Structure:**
-```text
-- Note 1
-- Note 2
-```
-
-**Example:**
-```text
-- Uses CoolProp enthalpy reference at 25°C and 1 atm.
-```
-
----
-
-### See Also
-
-**Purpose:**  
-Provides references to related functions or classes.
-
-**Structure:**
-```text
-See Also
---------
-related_function : brief description
-```
-
-**Example:**
-```text
-See Also
---------
-Stream.component_flow_rate : Returns mass flow per component
-```
-
----
-
-## Full Docstring Example
-
-```python
-def enthalpy(self) -> float:
-    """
-    Calculate total stream enthalpy using CoolProp.
-
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    float
-        Total stream enthalpy. [kJ/h]
-
-    Assumptions
-    -----------
-    Thermodynamic:
-        - Ideal mixing (no enthalpy of mixing)
-    Physical:
-        - No heat loss to surroundings
-    Numerical:
-        - Uses temperature in Kelvin and pressure in Pascals
-
-    Raises
-    ------
-    ValueError
-        If CoolProp fails for any component.
-
-    Notes
-    -----
-    Converts units for compatibility with CoolProp.
-
-    Examples
-    --------
-    >>> s = Stream("Feed", 100, 25, 101.3, {"Water": 1.0})
-    >>> s.enthalpy()
-    104500.0  # [kJ/h]
-    """
-```
+Questions, ideas, or collaboration: [@alejandratena](https://github.com/alejandratena)

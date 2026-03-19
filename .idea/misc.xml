@@ -4,4 +4,7 @@
     <option name="sdkName" value="Python 3.8 (distillation_sim_v1)" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13 virtualenv at ~/PycharmProjects/distillation_sim_v1/.venv" project-jdk-type="Python SDK" />
+  <component name="PythonCompatibilityInspectionAdvertiser">
+    <option name="version" value="3" />
+  </component>
 </project>
