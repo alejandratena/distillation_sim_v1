@@ -117,7 +117,7 @@ distillation_sim_v1/
 ├── main.py            # FastAPI entry point
 ├── app.py             # Streamlit frontend
 ├── requirements.txt
-└── README_SETUP.md
+└── README.md
 ```
 
 ---
