@@ -41,7 +41,7 @@ async scaling as the platform grows. Streamlit handles the MVP frontend — it w
 fastest path to an interactive UI, with a React replacement planned for production. 
 
 On the simulation side, balance validation uses tolerance-based checks rather than strict 
-equality because floating-point arithmetic makes exact comparison unreliable at engineering 
+equality because floating-point arithmetic makes exact comparison unreliable at industry
 precision. CoolProp drives thermophysical property evaluation, which is what enables the 
 platform's core promise: a clean path from ideal to real-fluid behavior without rearchitecting 
 the system.

@@ -1,6 +1,5 @@
-from .base import UnitOperation, Stream, Chemical
-from backend.core.exceptions import BalanceError
-import CoolProp.CoolProp as CP
+from .base import UnitOperation, Stream
+from backend.core.exceptions import BalanceError, DomainValidationError
 
 class FeedTank(UnitOperation):
     """A feed tank for storing and supplying process streams.
@@ -46,18 +45,28 @@ class FeedTank(UnitOperation):
     def __init__(self, name, inlet_streams, outlet_streams):
         super().__init__(name, inlet_streams, outlet_streams)
 
-        if len(self.inlet_streams) != 1:
-            raise ValueError(f"{self.name} requires one inlet stream")
-
         if len(self.outlet_streams) != 1:
-            raise ValueError(f"{self.name} requires one outlet stream")
+            raise DomainValidationError(
+                f"{self.name} requires exactly one outlet stream",
+                {"outlet_stream_count": len(self.outlet_streams)}
+            )
+
+        if len(self.inlet_streams) != 1:
+            raise DomainValidationError(
+                f"{self.name} requires exactly one inlet stream",
+                {"inlet_stream_count": len(self.inlet_streams)}
+            )
 
         inlet_components = set(self.inlet_streams[0].composition.keys())
         outlet_components = set(self.outlet_streams[0].composition.keys())
         if inlet_components != outlet_components:
-            raise ValueError(f"Inlet and outlet streams must have the same composition: "
-                             f"{inlet_components} vs {outlet_components}")
-
+            raise DomainValidationError(
+                "Inlet and outlet streams must have the same components",
+                {
+                    "inlet_components": list(inlet_components),
+                    "outlet_components": list(outlet_components),
+                }
+            )
 
     def mass_balance(self):
         """Validate mass conservation across the feed tank.
@@ -66,7 +75,7 @@ class FeedTank(UnitOperation):
 
               Raises
               ------
-              AssertionError
+              BalanceError
                   If mass is not conserved within numerical tolerance
               """
         inlet = self.inlet_streams[0].component_flow_rate() # multiple inlet/outlet streams possible. indexing for flexibility/scalability.
@@ -95,7 +104,7 @@ class FeedTank(UnitOperation):
 
                 Raises
                 ------
-                AssertionError
+                BalanceError
                     If energy is not conserved within 1e-3 kJ/h tolerance
                 """
         H_in = self.inlet_streams[0].enthalpy()
@@ -175,16 +184,29 @@ class DistillationColumn(UnitOperation):
         super().__init__(name, inlet_streams, outlet_streams)
 
         if len(self.inlet_streams) != 1:
-            raise ValueError(f"{self.name} requires one inlet stream")
+            raise DomainValidationError(
+                f"{self.name} requires exactly one inlet stream",
+                {"inlet_stream_count": len(self.inlet_streams)}
+            )
 
         if len(self.outlet_streams) != 2:
-            raise ValueError(f"{self.name} requires two outlet streams")
+            raise DomainValidationError(
+                f"{self.name} requires exactly two outlet streams",
+                {"outlet_stream_count": len(self.outlet_streams)}
+            )
 
         inlet_components = set(self.inlet_streams[0].composition.keys())
         distillate_components = set(self.outlet_streams[0].composition.keys())
         bottom_components = set(self.outlet_streams[1].composition.keys())
         if inlet_components != distillate_components or inlet_components != bottom_components:
-            raise ValueError(f"Inlet, distillate, and bottom streams must have the same composition: {inlet_components} vs {distillate_components} vs {bottom_components}")
+            raise DomainValidationError(
+                "Inlet, distillate, and bottom streams must have the same components",
+                {
+                    "inlet_components": sorted(inlet_components),
+                    "distillate_components": sorted(distillate_components),
+                    "bottom_components": sorted(bottom_components),
+                }
+            )
 
     def mass_balance(self):
         """Validate mass conservation across the distillation column.
@@ -193,7 +215,7 @@ class DistillationColumn(UnitOperation):
 
                 Raises
                 ------
-                AssertionError
+                BalanceError
                     If mass is not conserved within 1 kg/h tolerance
                 """
         F_total = sum(self.inlet_streams[0].component_flow_rate().values())
@@ -222,7 +244,7 @@ class DistillationColumn(UnitOperation):
 
                 Raises
                 ------
-                AssertionError
+                BalanceError
                     If energy is not conserved within 1 kJ/h tolerance
 
                 Notes
@@ -307,21 +329,37 @@ class Reboiler(UnitOperation):
         super().__init__(name, inlet_streams, outlet_streams)
 
         if len(self.inlet_streams) != 1:
-            raise ValueError(f"{self.name} requires one inlet stream")
+            raise DomainValidationError(
+                f"{self.name} requires exactly one inlet stream",
+                {"inlet_stream_count": len(self.inlet_streams)}
+            )
 
         if len(self.outlet_streams) != 1:
-            raise ValueError(f"{self.name} requires one outlet stream")
+            raise DomainValidationError(
+                f"{self.name} requires exactly one outlet stream",
+                {"outlet_stream_count": len(self.outlet_streams)}
+            )
 
         inlet_components = set(self.inlet_streams[0].composition.keys())
         outlet_components = set(self.outlet_streams[0].composition.keys())
         if inlet_components != outlet_components:
-            raise ValueError(
-                f"Inlet and outlet streams must have the same composition: "
-                f"{inlet_components} vs {outlet_components}")
+            raise DomainValidationError(
+                "Inlet and outlet streams must have the same composition",
+                {
+                    "inlet_components": sorted(inlet_components),
+                    "outlet_components": sorted(outlet_components),
+                }
+            )
 
         # Assumes sensible heat transfer only, no phase change modeled.
         if self.outlet_streams[0].temperature < self.inlet_streams[0].temperature:
-            raise ValueError(f"Outlet temperature must be greater than or equal to inlet temperature for {self.name}")
+            raise DomainValidationError(
+                f"Outlet temperature must be greater than or equal to inlet temperature for {self.name}",
+                {
+                    "inlet_temperature": self.inlet_streams[0].temperature,
+                    "outlet_temperature": self.outlet_streams[0].temperature,
+                }
+            )
 
     def mass_balance(self):
         """Validates conservation of mass across the reboiler.
@@ -330,7 +368,7 @@ class Reboiler(UnitOperation):
 
                 Raises
                 ------
-                AssertionError
+                BalanceError
                     If any component mass flow is not conserved within 1e-3 kg/h tolerance
                 """
         inlet = self.inlet_streams[0].component_flow_rate()
@@ -358,7 +396,7 @@ class Reboiler(UnitOperation):
 
                Raises
                ------
-               AssertionError
+               BalanceError
                    If energy balance calculation is inconsistent within 1e-3 kJ/h tolerance
                """
 
@@ -426,21 +464,33 @@ class Condenser(UnitOperation):
        >>> condenser.mass_balance()
        >>> condenser.energy_balance()
        """
+
     def __init__(self, name, inlet_streams, outlet_streams):
         super().__init__(name, inlet_streams, outlet_streams)
 
         if len(self.inlet_streams) != 1:
-            raise ValueError(f"{self.name} requires one inlet stream")
+            raise DomainValidationError(
+                f"{self.name} requires exactly one inlet stream",
+                {"inlet_stream_count": len(self.inlet_streams)}
+            )
 
         if len(self.outlet_streams) < 1:
-            raise ValueError(f"{self.name} requires at least one outlet stream")
+            raise DomainValidationError(
+                f"{self.name} requires at least one outlet stream",
+                {"outlet_stream_count": len(self.outlet_streams)}
+            )
 
         # Assumes sensible heat transfer only, no phase change modeled.
         inlet_temperature = self.inlet_streams[0].temperature
         for outlet_stream in self.outlet_streams:
             if outlet_stream.temperature > inlet_temperature:
-                raise ValueError(
-                    f"Outlet temperature must be less than or equal to inlet temperature for {self.name}")
+                raise DomainValidationError(
+                    f"Outlet temperature must be less than or equal to inlet temperature for {self.name}",
+                    {
+                        "inlet_temperature": inlet_temperature,
+                        "outlet_temperature": outlet_stream.temperature,
+                    }
+                )
 
     def mass_balance(self):
         """Validate mass conservation across the condenser.
@@ -450,7 +500,7 @@ class Condenser(UnitOperation):
 
                 Raises
                 ------
-                AssertionError
+                BalanceError
                     If any component mass is not conserved within 1e-2 kg/h tolerance
                 """
         inlet = self.inlet_streams[0].component_flow_rate()
@@ -491,7 +541,7 @@ class Condenser(UnitOperation):
 
                 Raises
                 ------
-                AssertionError
+                BalanceError
                     If energy is not conserved within 1 kJ/h tolerance
                 """
         H_in = self.inlet_streams[0].enthalpy()
@@ -562,10 +612,16 @@ class HeatExchanger(UnitOperation):
         super().__init__(name, inlet_streams, outlet_streams)
 
         if len(self.inlet_streams) != 2:
-            raise ValueError(f"{self.name} requires two inlet streams")
+            raise DomainValidationError(
+                f"{self.name} requires exactly two inlet streams",
+                {"inlet_stream_count": len(self.inlet_streams)}
+            )
 
         if len(self.outlet_streams) != 2:
-            raise ValueError(f"{self.name} requires two outlet streams")
+            raise DomainValidationError(
+                f"{self.name} requires exactly two outlet streams",
+                {"outlet_stream_count": len(self.outlet_streams)}
+            )
 
         hot_inlet_components = set(self.inlet_streams[0].composition.keys())
         hot_outlet_components = set(self.outlet_streams[0].composition.keys())
@@ -573,9 +629,22 @@ class HeatExchanger(UnitOperation):
         cold_outlet_components = set(self.outlet_streams[1].composition.keys())
 
         if hot_inlet_components != hot_outlet_components:
-            raise ValueError(f"Hot inlet and hot outlet streams must have the same composition: {hot_inlet_components} vs {hot_outlet_components}")
+            raise DomainValidationError(
+                "Hot inlet and hot outlet streams must have the same components",
+                {
+                    "hot_inlet_components": sorted(hot_inlet_components),
+                    "hot_outlet_components": sorted(hot_outlet_components),
+                }
+            )
+
         if cold_inlet_components != cold_outlet_components:
-            raise ValueError(f"Cold inlet and cold outlet streams must have the same composition: {cold_inlet_components} vs {cold_outlet_components}")
+            raise DomainValidationError(
+                "Cold inlet and cold outlet streams must have the same components",
+                {
+                    "cold_inlet_components": sorted(cold_inlet_components),
+                    "cold_outlet_components": sorted(cold_outlet_components),
+                }
+            )
 
     def mass_balance(self):
         """Validate mass conservation for both sides of the heat exchanger.
@@ -585,7 +654,7 @@ class HeatExchanger(UnitOperation):
 
                 Raises
                 ------
-                AssertionError
+                BalanceError
                     If mass is not conserved on either side within 1e-3 kg/h tolerance
                 """
         tolerance = 1e-3
@@ -632,7 +701,7 @@ class HeatExchanger(UnitOperation):
 
                 Raises
                 ------
-                AssertionError
+                BalanceError
                     If heat duties don't match within 1e-3 kJ/h tolerance
                 """
         hot_in = self.inlet_streams[0].enthalpy()
@@ -720,7 +789,7 @@ class Flowsheet:
 
                 Raises
                 ------
-                AssertionError
+                BalanceError
                     If any unit operation fails its mass or energy balance check
 
                 Notes
