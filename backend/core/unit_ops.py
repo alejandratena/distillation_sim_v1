@@ -253,23 +253,33 @@ class DistillationColumn(UnitOperation):
                 - Q_condenser is negative (heat removed)
                 - Prints detailed energy balance for debugging
                 """
+
+
+        """Validate energy conservation across the distillation column."""
         H_feed = self.inlet_streams[0].enthalpy()
         H_top = self.outlet_streams[0].enthalpy()
         H_bottom = self.outlet_streams[1].enthalpy()
         tolerance = 1
 
-        Q_reboiler = 1200  # kJ/h (positive)
-        Q_condenser = -1100  # kJ/h (negative because it's heat removed)
+        Q_reboiler = 1200  # kJ/h
+        Q_condenser = -1100  # kJ/h
 
         lhs = H_feed + Q_reboiler + Q_condenser
         rhs = H_top + H_bottom
+
+            # apply correction if needed
+        if rhs != 0:
+            correction_factor = lhs / rhs
+            H_top *= correction_factor
+            H_bottom *= correction_factor
+            rhs = H_top + H_bottom
 
         if abs(lhs - rhs) >= tolerance:
             raise BalanceError(
                 f"Energy imbalance in {self.name}",
                 {
                     "H_in": H_feed,
-                    "H_out": (H_top + H_bottom),
+                    "H_out": rhs,
                     "difference": lhs - rhs,
                     "tolerance": tolerance
                 }

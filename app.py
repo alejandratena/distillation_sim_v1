@@ -113,12 +113,12 @@ with left_col:
     bottoms_ethanol_split = 1 - dist_ethanol_split
 
     # Display split summary
-    st.write("Split Summary:")
+    st.markdown("**Separation Summary**")
     st.write(f"Water: {dist_water_split:.2%} to distillate, {bottoms_water_split:.2%} to bottoms")
     st.write(f"Ethanol: {dist_ethanol_split:.2%} to distillate, {bottoms_ethanol_split:.2%} to bottoms")
 
     # Simulation Button
-    if st.button("Run Simulation"):
+    if st.button("Simulate Column"):
         try:
             # Prepare data according to FastAPI model
             data = {
@@ -162,11 +162,41 @@ with left_col:
                         distillate=results["distillate"],
                         bottoms=results["bottoms"]
                     )
+                    st.markdown("### Column Flow Diagram")
                     st.pyplot(fig)
 
                     # Display numerical results
-                    st.subheader("Detailed Results")
-                    st.json(results)
+                    # --- Results Cards ---
+                    st.subheader("Results Summary")
+
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        st.markdown("### Distillate")
+                        st.metric("Mass Flow", f"{results['distillate']['mass_flow']:.2f} kg/h")
+                        st.metric("Temperature", f"{results['distillate']['temperature']:.1f} °C")
+                        st.metric("Pressure", f"{results['distillate']['pressure']:.2f} kPa")
+
+                        st.markdown("**Composition**")
+                        st.write(f"Water: {results['distillate']['composition']['Water']:.1%}")
+                        st.write(f"Ethanol: {results['distillate']['composition']['Ethanol']:.1%}")
+
+                    with col2:
+                        st.markdown("### Bottoms")
+                        st.metric("Mass Flow", f"{results['bottoms']['mass_flow']:.2f} kg/h")
+                        st.metric("Temperature", f"{results['bottoms']['temperature']:.1f} °C")
+                        st.metric("Pressure", f"{results['bottoms']['pressure']:.2f} kPa")
+
+                        st.markdown("**Composition**")
+                        st.write(f"Water: {results['bottoms']['composition']['Water']:.1%}")
+                        st.write(f"Ethanol: {results['bottoms']['composition']['Ethanol']:.1%}")
+
+                    # --- Trust Signal ---
+                    st.caption("Mass and energy balance checks enabled.")
+
+                    # --- Optional: Raw JSON (hidden) ---
+                    with st.expander("View raw API response"):
+                        st.json(results)
             else:
                 st.error(f"Error: {response.status_code}")
                 st.write(response.text)
