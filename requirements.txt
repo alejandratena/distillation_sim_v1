@@ -1,5 +1,5 @@
 streamlit
-matplotlib==3.9.0
+plotly
 coolprop==6.8.0
 numpy==2.2.6
 pandas==2.2.3

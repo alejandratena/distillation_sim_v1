@@ -1,5 +1,5 @@
 import streamlit as st
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 from backend.simulation.flowsheet import simulate_distillation_column
 
 # Page config
@@ -163,51 +163,103 @@ st.markdown("""
 
 
 def draw_column_visual(feed_flow, feed_comp, distillate=None, bottoms=None):
-    """Draw a simple column flow diagram."""
-    fig, ax = plt.subplots(figsize=(5, 5.5), facecolor='#0F172A')
-    ax.set_facecolor('#0F172A')
+    """Draw a simple column flow diagram using Plotly."""
+    fig = go.Figure()
 
-    # Column body
-    column_x = [0.4, 0.6, 0.6, 0.4, 0.4]
-    column_y = [0.25, 0.25, 0.75, 0.75, 0.25]
-    ax.fill(column_x, column_y, color='#334155', edgecolor='#64748B', linewidth=2)
-    ax.text(0.5, 0.5, "Column", rotation=90, fontsize=10, color='#94A3B8',
-            ha='center', va='center', fontweight='bold')
+    # Column body (rectangle)
+    fig.add_shape(
+        type="rect",
+        x0=0.4, y0=0.25, x1=0.6, y1=0.75,
+        fillcolor="#334155",
+        line=dict(color="#64748B", width=2)
+    )
+
+    # Column label
+    fig.add_annotation(
+        x=0.5, y=0.5, text="Column",
+        textangle=-90, showarrow=False,
+        font=dict(size=12, color="#94A3B8", family="Arial Black")
+    )
 
     # Feed arrow (left)
-    ax.annotate('', xy=(0.4, 0.5), xytext=(0.15, 0.5),
-                arrowprops=dict(arrowstyle="-|>", color='#3B82F6', lw=2.5))
-    ax.text(0.05, 0.5, f'Feed\n{feed_flow:.1f} kg/h', fontsize=9, color='#F8FAFC',
-            va='center', fontweight='500')
-    ax.text(0.05, 0.42, feed_comp, fontsize=8, color='#94A3B8', va='top')
+    fig.add_annotation(
+        x=0.4, y=0.5, ax=0.15, ay=0.5,
+        xref="x", yref="y", axref="x", ayref="y",
+        showarrow=True, arrowhead=2, arrowsize=1.5,
+        arrowwidth=3, arrowcolor="#3B82F6"
+    )
+    fig.add_annotation(
+        x=0.05, y=0.52, text=f"<b>Feed</b><br>{feed_flow:.1f} kg/h",
+        showarrow=False, font=dict(size=11, color="#F8FAFC"),
+        xanchor="left"
+    )
+    fig.add_annotation(
+        x=0.05, y=0.42, text=feed_comp.replace('\n', '<br>'),
+        showarrow=False, font=dict(size=10, color="#94A3B8"),
+        xanchor="left"
+    )
 
     # Distillate arrow (top right)
-    ax.annotate('', xy=(0.85, 0.75), xytext=(0.6, 0.75),
-                arrowprops=dict(arrowstyle="-|>", color='#22C55E', lw=2.5))
+    fig.add_annotation(
+        x=0.85, y=0.75, ax=0.6, ay=0.75,
+        xref="x", yref="y", axref="x", ayref="y",
+        showarrow=True, arrowhead=2, arrowsize=1.5,
+        arrowwidth=3, arrowcolor="#22C55E"
+    )
     if distillate:
-        dist_comp = f"Water: {distillate['composition']['Water']:.0%}\nEthanol: {distillate['composition']['Ethanol']:.0%}"
-        ax.text(0.88, 0.75, f"Distillate\n{distillate['mass_flow']:.1f} kg/h",
-                fontsize=9, color='#F8FAFC', va='center', fontweight='500')
-        ax.text(0.88, 0.67, dist_comp, fontsize=8, color='#94A3B8', va='top')
+        dist_comp = f"Water: {distillate['composition']['Water']:.0%}<br>Ethanol: {distillate['composition']['Ethanol']:.0%}"
+        fig.add_annotation(
+            x=0.88, y=0.77, text=f"<b>Distillate</b><br>{distillate['mass_flow']:.1f} kg/h",
+            showarrow=False, font=dict(size=11, color="#F8FAFC"),
+            xanchor="left"
+        )
+        fig.add_annotation(
+            x=0.88, y=0.67, text=dist_comp,
+            showarrow=False, font=dict(size=10, color="#94A3B8"),
+            xanchor="left"
+        )
     else:
-        ax.text(0.88, 0.75, "Distillate", fontsize=9, color='#64748B', va='center')
+        fig.add_annotation(
+            x=0.88, y=0.75, text="Distillate",
+            showarrow=False, font=dict(size=11, color="#64748B"),
+            xanchor="left"
+        )
 
     # Bottoms arrow (bottom right)
-    ax.annotate('', xy=(0.85, 0.25), xytext=(0.6, 0.25),
-                arrowprops=dict(arrowstyle="-|>", color='#F59E0B', lw=2.5))
+    fig.add_annotation(
+        x=0.85, y=0.25, ax=0.6, ay=0.25,
+        xref="x", yref="y", axref="x", ayref="y",
+        showarrow=True, arrowhead=2, arrowsize=1.5,
+        arrowwidth=3, arrowcolor="#F59E0B"
+    )
     if bottoms:
-        bot_comp = f"Water: {bottoms['composition']['Water']:.0%}\nEthanol: {bottoms['composition']['Ethanol']:.0%}"
-        ax.text(0.88, 0.25, f"Bottoms\n{bottoms['mass_flow']:.1f} kg/h",
-                fontsize=9, color='#F8FAFC', va='center', fontweight='500')
-        ax.text(0.88, 0.17, bot_comp, fontsize=8, color='#94A3B8', va='top')
+        bot_comp = f"Water: {bottoms['composition']['Water']:.0%}<br>Ethanol: {bottoms['composition']['Ethanol']:.0%}"
+        fig.add_annotation(
+            x=0.88, y=0.27, text=f"<b>Bottoms</b><br>{bottoms['mass_flow']:.1f} kg/h",
+            showarrow=False, font=dict(size=11, color="#F8FAFC"),
+            xanchor="left"
+        )
+        fig.add_annotation(
+            x=0.88, y=0.17, text=bot_comp,
+            showarrow=False, font=dict(size=10, color="#94A3B8"),
+            xanchor="left"
+        )
     else:
-        ax.text(0.88, 0.25, "Bottoms", fontsize=9, color='#64748B', va='center')
+        fig.add_annotation(
+            x=0.88, y=0.25, text="Bottoms",
+            showarrow=False, font=dict(size=11, color="#64748B"),
+            xanchor="left"
+        )
 
-    ax.set_xlim(0, 1.15)
-    ax.set_ylim(0, 1)
-    ax.axis('off')
+    fig.update_layout(
+        xaxis=dict(range=[0, 1.15], showgrid=False, zeroline=False, visible=False),
+        yaxis=dict(range=[0, 1], showgrid=False, zeroline=False, visible=False),
+        plot_bgcolor="#0F172A",
+        paper_bgcolor="#0F172A",
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=350
+    )
 
-    plt.tight_layout()
     return fig
 
 
@@ -397,7 +449,7 @@ with right_col:
             feed_comp=f"Water: {water_fraction:.0%}\nEthanol: {ethanol_fraction:.0%}"
         )
 
-    st.pyplot(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
     # Result cards
     if st.session_state.results:
