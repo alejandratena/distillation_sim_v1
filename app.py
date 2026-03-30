@@ -1,6 +1,6 @@
 import streamlit as st
-import requests
 import matplotlib.pyplot as plt
+from backend.simulation.flowsheet import simulate_distillation_column
 
 # Page config
 st.set_page_config(
@@ -339,30 +339,44 @@ with left_col:
 
     if st.button("▶ Run Simulation", use_container_width=True):
         try:
-            data = {
-                "feed_stream": {
-                    "temperature": feed_temp,
-                    "pressure": feed_pressure,
-                    "mass_flow": feed_flow,
-                    "composition": {"Water": water_fraction, "Ethanol": ethanol_fraction}
+            # Call simulation with correct parameter names
+            column = simulate_distillation_column(
+                name="BinaryDistillation",
+                feed_flow_rate=feed_flow,
+                feed_temperature=feed_temp,
+                feed_pressure=feed_pressure,
+                feed_composition={"Water": water_fraction, "Ethanol": ethanol_fraction},
+                distillate_split={"Water": dist_water_split, "Ethanol": dist_ethanol_split},
+                bottoms_split={"Water": bottoms_water_split, "Ethanol": bottoms_ethanol_split},
+                distillate_temperature=distillate_temp,
+                bottoms_temperature=bottoms_temp,
+                pressure=column_pressure
+            )
+
+            # Extract results from DistillationColumn object
+            distillate_stream = column.outlet_streams[0]
+            bottoms_stream = column.outlet_streams[1]
+
+            results = {
+                "distillate": {
+                    "mass_flow": distillate_stream.flow_rate,
+                    "temperature": distillate_stream.temperature,
+                    "pressure": distillate_stream.pressure,
+                    "composition": distillate_stream.composition
                 },
-                "distillate_split": {"Water": dist_water_split, "Ethanol": dist_ethanol_split},
-                "bottoms_split": {"Water": bottoms_water_split, "Ethanol": bottoms_ethanol_split},
-                "distillate_temperature": distillate_temp,
-                "bottoms_temperature": bottoms_temp,
-                "pressure": column_pressure
+                "bottoms": {
+                    "mass_flow": bottoms_stream.flow_rate,
+                    "temperature": bottoms_stream.temperature,
+                    "pressure": bottoms_stream.pressure,
+                    "composition": bottoms_stream.composition
+                }
             }
 
-            response = requests.post("http://localhost:8000/simulate/distillation", json=data)
+            st.session_state.results = results
+            st.rerun()
 
-            if response.status_code == 200:
-                st.session_state.results = response.json()
-                st.rerun()
-            else:
-                st.error(f"Simulation error: {response.status_code}")
-
-        except requests.exceptions.ConnectionError:
-            st.error("Could not connect to simulation server. Is it running?")
+        except Exception as e:
+            st.error(f"Simulation error: {str(e)}")
 
 # Right column - Results
 with right_col:
