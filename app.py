@@ -1,210 +1,421 @@
 import streamlit as st
 import requests
-import json
 import matplotlib.pyplot as plt
 
-# Set page configuration
-st.set_page_config(layout="wide")
+# Page config
+st.set_page_config(
+    page_title="Equilibria — Distillation Simulator",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS for branding
+st.markdown("""
+<style>
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
+    }
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+        padding-top: 0;
+    }
+    .sidebar-header {
+        padding: 1.5rem 0;
+        text-align: center;
+        border-bottom: 1px solid #334155;
+        margin-bottom: 1.5rem;
+    }
+    .sidebar-title {
+        color: #F8FAFC;
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin: 0.75rem 0 0.25rem 0;
+        letter-spacing: -0.5px;
+    }
+    .sidebar-subtitle {
+        color: #64748B;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .sidebar-section {
+        color: #94A3B8;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin: 1.5rem 0 0.75rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #334155;
+    }
+    .sidebar-info {
+        background: #1E293B;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 1rem;
+        border: 1px solid #334155;
+    }
+    .sidebar-info p {
+        color: #94A3B8;
+        font-size: 0.8rem;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    /* Main content styling */
+    .main-header {
+        margin-bottom: 2rem;
+    }
+    .main-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #F8FAFC;
+        margin-bottom: 0.5rem;
+    }
+    .main-subtitle {
+        color: #94A3B8;
+        font-size: 0.95rem;
+    }
+    .preview-badge {
+        display: inline-block;
+        background: #1E293B;
+        color: #3B82F6;
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.25rem 0.75rem;
+        border-radius: 100px;
+        margin-left: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border: 1px solid #334155;
+        vertical-align: middle;
+    }
+
+    /* Result card styling */
+    .result-card {
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+    }
+    .result-card h3 {
+        margin: 0 0 0.75rem 0;
+        color: #F8FAFC;
+        font-size: 1.1rem;
+    }
+    .metric-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.4rem 0;
+        border-bottom: 1px solid #1E293B;
+    }
+    .metric-row:last-child {
+        border-bottom: none;
+    }
+    .metric-label {
+        color: #94A3B8;
+        font-size: 0.85rem;
+    }
+    .metric-value {
+        color: #F8FAFC;
+        font-weight: 600;
+        font-size: 1rem;
+    }
+    .metric-value-large {
+        color: #F8FAFC;
+        font-weight: 700;
+        font-size: 1.4rem;
+    }
+
+    /* Trust signal */
+    .trust-signal {
+        background: #0F172A;
+        border-left: 3px solid #22C55E;
+        padding: 0.75rem 1rem;
+        margin-top: 1rem;
+        font-size: 0.85rem;
+        color: #94A3B8;
+        border-radius: 0 8px 8px 0;
+    }
+
+    /* Section headers */
+    .section-header {
+        color: #F8FAFC;
+        font-size: 1rem;
+        font-weight: 600;
+        margin-top: 1.25rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #334155;
+    }
+
+    /* Button styling */
+    .stButton > button {
+        background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+        border: none;
+        font-weight: 600;
+    }
+    .stButton > button:hover {
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    }
+</style>
+""", unsafe_allow_html=True)
 
 
-def draw_column_visual(feed_flow, feed_comp, distillate, bottoms):
-    fig, ax = plt.subplots(figsize=(4, 6))
+def draw_column_visual(feed_flow, feed_comp, distillate=None, bottoms=None):
+    """Draw a simple column flow diagram."""
+    fig, ax = plt.subplots(figsize=(5, 5.5), facecolor='#0F172A')
+    ax.set_facecolor('#0F172A')
 
-    # Draw column body
-    ax.plot([0.5, 0.5], [0.5, 0.5], color='black', linewidth=10)
-    ax.text(0.53, 0.5, "Column", rotation=90, fontsize=10, verticalalignment='center')
+    # Column body
+    column_x = [0.4, 0.6, 0.6, 0.4, 0.4]
+    column_y = [0.25, 0.25, 0.75, 0.75, 0.25]
+    ax.fill(column_x, column_y, color='#334155', edgecolor='#64748B', linewidth=2)
+    ax.text(0.5, 0.5, "Column", rotation=90, fontsize=10, color='#94A3B8',
+            ha='center', va='center', fontweight='bold')
 
-    # Feed stream (left middle)
-    ax.annotate('', xy=(0.5, 0.5), xytext=(0.1, 0.5),
-                arrowprops=dict(arrowstyle="->", lw=2))
-    ax.text(0.0, 0.52, f'Feed\n{feed_flow:.1f} kg/h\n{feed_comp}', fontsize=8)
+    # Feed arrow (left)
+    ax.annotate('', xy=(0.4, 0.5), xytext=(0.15, 0.5),
+                arrowprops=dict(arrowstyle="-|>", color='#3B82F6', lw=2.5))
+    ax.text(0.05, 0.5, f'Feed\n{feed_flow:.1f} kg/h', fontsize=9, color='#F8FAFC',
+            va='center', fontweight='500')
+    ax.text(0.05, 0.42, feed_comp, fontsize=8, color='#94A3B8', va='top')
 
-    # Distillate stream (top)
-    ax.annotate('', xy=(0.5, 0.8), xytext=(0.5, 1.0),
-                arrowprops=dict(arrowstyle="->", lw=2))
-    dist_comp = "\n".join([f"{k}: {v:.0%}" for k, v in distillate["composition"].items()])
-    ax.text(0.55, 0.88, f'Distillate\n{distillate["mass_flow"]:.1f} kg/h\n{dist_comp}', fontsize=8)
+    # Distillate arrow (top right)
+    ax.annotate('', xy=(0.85, 0.75), xytext=(0.6, 0.75),
+                arrowprops=dict(arrowstyle="-|>", color='#22C55E', lw=2.5))
+    if distillate:
+        dist_comp = f"Water: {distillate['composition']['Water']:.0%}\nEthanol: {distillate['composition']['Ethanol']:.0%}"
+        ax.text(0.88, 0.75, f"Distillate\n{distillate['mass_flow']:.1f} kg/h",
+                fontsize=9, color='#F8FAFC', va='center', fontweight='500')
+        ax.text(0.88, 0.67, dist_comp, fontsize=8, color='#94A3B8', va='top')
+    else:
+        ax.text(0.88, 0.75, "Distillate", fontsize=9, color='#64748B', va='center')
 
-    # Bottoms stream (bottom)
-    ax.annotate('', xy=(0.5, 0.2), xytext=(0.5, 0.0),
-                arrowprops=dict(arrowstyle="->", lw=2))
-    bot_comp = "\n".join([f"{k}: {v:.0%}" for k, v in bottoms["composition"].items()])
-    ax.text(0.55, 0.08, f'Bottoms\n{bottoms["mass_flow"]:.1f} kg/h\n{bot_comp}', fontsize=8)
+    # Bottoms arrow (bottom right)
+    ax.annotate('', xy=(0.85, 0.25), xytext=(0.6, 0.25),
+                arrowprops=dict(arrowstyle="-|>", color='#F59E0B', lw=2.5))
+    if bottoms:
+        bot_comp = f"Water: {bottoms['composition']['Water']:.0%}\nEthanol: {bottoms['composition']['Ethanol']:.0%}"
+        ax.text(0.88, 0.25, f"Bottoms\n{bottoms['mass_flow']:.1f} kg/h",
+                fontsize=9, color='#F8FAFC', va='center', fontweight='500')
+        ax.text(0.88, 0.17, bot_comp, fontsize=8, color='#94A3B8', va='top')
+    else:
+        ax.text(0.88, 0.25, "Bottoms", fontsize=9, color='#64748B', va='center')
 
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1.1)
+    ax.set_xlim(0, 1.15)
+    ax.set_ylim(0, 1)
     ax.axis('off')
+
+    plt.tight_layout()
     return fig
 
 
-# Main app layout
-st.title("Distillation Column Simulator")
+def render_result_card(title, mass_flow, temperature, pressure, water_pct, ethanol_pct, color="#3B82F6"):
+    """Render a styled result card."""
+    st.markdown(f"""
+    <div class="result-card" style="border-top: 3px solid {color};">
+        <h3>{title}</h3>
+        <div class="metric-row">
+            <span class="metric-label">Mass Flow</span>
+            <span class="metric-value-large">{mass_flow}</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-label">Temperature</span>
+            <span class="metric-value">{temperature}</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-label">Pressure</span>
+            <span class="metric-value">{pressure}</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-label">Water</span>
+            <span class="metric-value">{water_pct}</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-label">Ethanol</span>
+            <span class="metric-value">{ethanol_pct}</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-# Create two columns for layout
-left_col, right_col = st.columns([2, 1])
+
+# ============ SIDEBAR ============
+with st.sidebar:
+    # Logo and branding header
+    st.markdown('<div class="sidebar-header">', unsafe_allow_html=True)
+    st.image("assets/logo.png", width=80)
+    st.markdown('<div class="sidebar-title">EQUILIBRIA</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-subtitle">Process Simulation</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # About section
+    st.markdown('<div class="sidebar-section">About</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="sidebar-info">
+        <p>Physics-based chemical process simulation using validated mass and energy balances with CoolProp thermophysical properties.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Quick stats/info
+    st.markdown('<div class="sidebar-section">Current Model</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="sidebar-info">
+        <p><strong>Unit Operation:</strong> Binary Distillation</p>
+        <p style="margin-top: 0.5rem;"><strong>Components:</strong> Ethanol / Water</p>
+        <p style="margin-top: 0.5rem;"><strong>Thermodynamics:</strong> CoolProp</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Spacer
+    st.markdown("<br><br>", unsafe_allow_html=True)
+
+    # Footer
+    st.caption("Technical Preview • v0.1.0")
+
+# ============ MAIN CONTENT ============
+
+# Header
+st.markdown("""
+<div class="main-header">
+    <div class="main-title">Binary Distillation Simulator <span class="preview-badge">Technical Preview</span></div>
+    <div class="main-subtitle">Configure feed conditions and operating parameters to simulate separation performance.</div>
+</div>
+""", unsafe_allow_html=True)
+
+# Store results in session state
+if 'results' not in st.session_state:
+    st.session_state.results = None
+
+# Layout
+left_col, right_col = st.columns([1.2, 1])
 
 with left_col:
-    # Feed Stream Parameters Section
-    st.header("Feed Stream Parameters")
-    feed_flow = st.number_input("Feed Flow Rate (kg/h)",
-                                min_value=10.0,
-                                max_value=1000.0,
-                                value=100.0,
-                                help="Mass flow rate of the feed stream")
+    # Feed Stream Parameters
+    st.markdown('<div class="section-header">Feed Stream Parameters</div>', unsafe_allow_html=True)
 
-    feed_temp = st.number_input("Feed Temperature (°C)",
-                                min_value=20.0,
-                                max_value=90.0,
-                                value=70.0,
-                                help="Temperature of the feed stream")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        feed_flow = st.number_input("Flow Rate (kg/h)", min_value=10.0, max_value=1000.0, value=100.0)
+    with col2:
+        feed_temp = st.number_input("Temperature (°C)", min_value=20.0, max_value=90.0, value=70.0)
+    with col3:
+        feed_pressure = st.number_input("Pressure (kPa)", min_value=101.0, max_value=200.0, value=101.325)
 
-    feed_pressure = st.number_input("Feed Pressure (kPa)",
-                                    min_value=101.0,
-                                    max_value=200.0,
-                                    value=101.325,
-                                    help="Pressure of the feed stream")
-
-    # Feed Composition Section
-    st.subheader("Feed Composition")
-    water_fraction = st.slider("Water Fraction",
-                               min_value=0.2,
-                               max_value=0.8,
-                               value=0.6,
-                               help="Mass fraction of water in feed")
+    # Feed Composition
+    st.markdown('<div class="section-header">Feed Composition</div>', unsafe_allow_html=True)
+    water_fraction = st.slider("Water Fraction", min_value=0.2, max_value=0.8, value=0.6, format="%.2f")
     ethanol_fraction = 1 - water_fraction
-    st.write(f"Ethanol Fraction: {ethanol_fraction:.3f}")
+    st.caption(f"Ethanol Fraction: {ethanol_fraction:.3f}")
 
-    # Operating Parameters Section
-    st.subheader("Operating Parameters")
-    column_pressure = st.number_input("Column Pressure (kPa)",
-                                      min_value=101.0,
-                                      max_value=200.0,
-                                      value=101.325,
-                                      help="Operating pressure of the column")
+    # Operating Parameters
+    st.markdown('<div class="section-header">Operating Parameters</div>', unsafe_allow_html=True)
 
-    distillate_temp = st.number_input("Distillate Temperature (°C)",
-                                      min_value=70.0,
-                                      max_value=85.0,
-                                      value=78.0,
-                                      help="Target temperature for distillate stream")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        column_pressure = st.number_input("Column Pressure (kPa)", min_value=101.0, max_value=200.0, value=101.325)
+    with col2:
+        distillate_temp = st.number_input("Distillate Temp (°C)", min_value=70.0, max_value=85.0, value=78.0)
+    with col3:
+        bottoms_temp = st.number_input("Bottoms Temp (°C)", min_value=90.0, max_value=105.0, value=95.0)
 
-    bottoms_temp = st.number_input("Bottoms Temperature (°C)",
-                                   min_value=90.0,
-                                   max_value=105.0,
-                                   value=95.0,
-                                   help="Target temperature for bottoms stream")
+    # Split Fractions
+    st.markdown('<div class="section-header">Split Fractions</div>', unsafe_allow_html=True)
 
-    # Split Fractions Section
-    st.subheader("Split Fractions")
-    dist_water_split = st.slider("Distillate Water Split",
-                                 min_value=0.05,
-                                 max_value=0.3,
-                                 value=0.1,
-                                 help="Fraction of water that goes to distillate")
+    col1, col2 = st.columns(2)
+    with col1:
+        dist_water_split = st.slider("Water → Distillate", min_value=0.05, max_value=0.3, value=0.1, format="%.2f")
+    with col2:
+        dist_ethanol_split = st.slider("Ethanol → Distillate", min_value=0.7, max_value=0.95, value=0.85, format="%.2f")
 
-    dist_ethanol_split = st.slider("Distillate Ethanol Split",
-                                   min_value=0.7,
-                                   max_value=0.95,
-                                   value=0.85,
-                                   help="Fraction of ethanol that goes to distillate")
-
-    # Calculate bottoms splits
     bottoms_water_split = 1 - dist_water_split
     bottoms_ethanol_split = 1 - dist_ethanol_split
 
-    # Display split summary
-    st.markdown("**Separation Summary**")
-    st.write(f"Water: {dist_water_split:.2%} to distillate, {bottoms_water_split:.2%} to bottoms")
-    st.write(f"Ethanol: {dist_ethanol_split:.2%} to distillate, {bottoms_ethanol_split:.2%} to bottoms")
+    st.caption(
+        f"**Separation:** Water {dist_water_split:.0%} / {bottoms_water_split:.0%} • Ethanol {dist_ethanol_split:.0%} / {bottoms_ethanol_split:.0%}")
 
-    # Simulation Button
-    if st.button("Simulate Column"):
+    # Simulate Button
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    if st.button("▶ Run Simulation", use_container_width=True):
         try:
-            # Prepare data according to FastAPI model
             data = {
                 "feed_stream": {
                     "temperature": feed_temp,
                     "pressure": feed_pressure,
                     "mass_flow": feed_flow,
-                    "composition": {
-                        "Water": water_fraction,
-                        "Ethanol": ethanol_fraction
-                    }
+                    "composition": {"Water": water_fraction, "Ethanol": ethanol_fraction}
                 },
-                "distillate_split": {
-                    "Water": dist_water_split,
-                    "Ethanol": dist_ethanol_split
-                },
-                "bottoms_split": {
-                    "Water": bottoms_water_split,
-                    "Ethanol": bottoms_ethanol_split
-                },
+                "distillate_split": {"Water": dist_water_split, "Ethanol": dist_ethanol_split},
+                "bottoms_split": {"Water": bottoms_water_split, "Ethanol": bottoms_ethanol_split},
                 "distillate_temperature": distillate_temp,
                 "bottoms_temperature": bottoms_temp,
                 "pressure": column_pressure
             }
 
-            # Make API request
-            response = requests.post("http://localhost:8000/simulate/distillation",
-                                     json=data)
+            response = requests.post("http://localhost:8000/simulate/distillation", json=data)
 
             if response.status_code == 200:
-                results = response.json()
-
-                # Display results in right column
-                with right_col:
-                    st.header("Simulation Results")
-
-                    # Display the column visualization
-                    fig = draw_column_visual(
-                        feed_flow=feed_flow,
-                        feed_comp=f"Water: {water_fraction:.0%}\nEthanol: {ethanol_fraction:.0%}",
-                        distillate=results["distillate"],
-                        bottoms=results["bottoms"]
-                    )
-                    st.markdown("### Column Flow Diagram")
-                    st.pyplot(fig)
-
-                    # Display numerical results
-                    # --- Results Cards ---
-                    st.subheader("Results Summary")
-
-                    col1, col2 = st.columns(2)
-
-                    with col1:
-                        st.markdown("### Distillate")
-                        st.metric("Mass Flow", f"{results['distillate']['mass_flow']:.2f} kg/h")
-                        st.metric("Temperature", f"{results['distillate']['temperature']:.1f} °C")
-                        st.metric("Pressure", f"{results['distillate']['pressure']:.2f} kPa")
-
-                        st.markdown("**Composition**")
-                        st.write(f"Water: {results['distillate']['composition']['Water']:.1%}")
-                        st.write(f"Ethanol: {results['distillate']['composition']['Ethanol']:.1%}")
-
-                    with col2:
-                        st.markdown("### Bottoms")
-                        st.metric("Mass Flow", f"{results['bottoms']['mass_flow']:.2f} kg/h")
-                        st.metric("Temperature", f"{results['bottoms']['temperature']:.1f} °C")
-                        st.metric("Pressure", f"{results['bottoms']['pressure']:.2f} kPa")
-
-                        st.markdown("**Composition**")
-                        st.write(f"Water: {results['bottoms']['composition']['Water']:.1%}")
-                        st.write(f"Ethanol: {results['bottoms']['composition']['Ethanol']:.1%}")
-
-                    # --- Trust Signal ---
-                    st.caption("Mass and energy balance checks enabled.")
-
-                    # --- Optional: Raw JSON (hidden) ---
-                    with st.expander("View raw API response"):
-                        st.json(results)
+                st.session_state.results = response.json()
+                st.rerun()
             else:
-                st.error(f"Error: {response.status_code}")
-                st.write(response.text)
+                st.error(f"Simulation error: {response.status_code}")
 
         except requests.exceptions.ConnectionError:
-            st.error("Could not connect to the simulation server. Is it running?")
+            st.error("Could not connect to simulation server. Is it running?")
 
-# Initialize right column
+# Right column - Results
 with right_col:
-    st.header("Simulation Results")
-    st.info("Run the simulation to see results")
+    st.markdown('<div class="section-header">Simulation Results</div>', unsafe_allow_html=True)
+
+    # Column diagram
+    if st.session_state.results:
+        results = st.session_state.results
+        fig = draw_column_visual(
+            feed_flow=feed_flow,
+            feed_comp=f"Water: {water_fraction:.0%}\nEthanol: {ethanol_fraction:.0%}",
+            distillate=results["distillate"],
+            bottoms=results["bottoms"]
+        )
+    else:
+        fig = draw_column_visual(
+            feed_flow=feed_flow,
+            feed_comp=f"Water: {water_fraction:.0%}\nEthanol: {ethanol_fraction:.0%}"
+        )
+
+    st.pyplot(fig, use_container_width=True)
+
+    # Result cards
+    if st.session_state.results:
+        results = st.session_state.results
+
+        col1, col2 = st.columns(2)
+        with col1:
+            render_result_card(
+                title="Distillate",
+                mass_flow=f"{results['distillate']['mass_flow']:.2f} kg/h",
+                temperature=f"{results['distillate']['temperature']:.1f} °C",
+                pressure=f"{results['distillate']['pressure']:.2f} kPa",
+                water_pct=f"{results['distillate']['composition']['Water']:.1%}",
+                ethanol_pct=f"{results['distillate']['composition']['Ethanol']:.1%}",
+                color="#22C55E"
+            )
+        with col2:
+            render_result_card(
+                title="Bottoms",
+                mass_flow=f"{results['bottoms']['mass_flow']:.2f} kg/h",
+                temperature=f"{results['bottoms']['temperature']:.1f} °C",
+                pressure=f"{results['bottoms']['pressure']:.2f} kPa",
+                water_pct=f"{results['bottoms']['composition']['Water']:.1%}",
+                ethanol_pct=f"{results['bottoms']['composition']['Ethanol']:.1%}",
+                color="#F59E0B"
+            )
+
+        # Trust signal
+        st.markdown('<div class="trust-signal">✓ Mass and energy balance checks enabled</div>', unsafe_allow_html=True)
+
+        # Raw API response
+        with st.expander("View raw API response"):
+            st.json(results)
+    else:
+        st.info("Configure parameters and run the simulation to see results.")
