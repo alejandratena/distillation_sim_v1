@@ -4,7 +4,7 @@ from backend.simulation.flowsheet import simulate_distillation_column
 
 # Page config
 st.set_page_config(
-    page_title="Equilibria — Distillation Simulator",
+    page_title="Equilibria — Process Simulator",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -158,106 +158,236 @@ st.markdown("""
     .stButton > button:hover {
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
     }
+
+    /* Certainty index styling */
+    .certainty-container {
+        background: #1E293B;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 1rem;
+        border: 1px solid #334155;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 
 def draw_column_visual(feed_flow, feed_comp, distillate=None, bottoms=None):
-    """Draw a simple column flow diagram using Plotly."""
+    """Draw a distillation column with condenser and reboiler using Plotly."""
     fig = go.Figure()
 
-    # Column body (rectangle)
+    # =========================
+    # COLUMN BODY (wider for industrial presence)
+    # =========================
     fig.add_shape(
         type="rect",
-        x0=0.4, y0=0.25, x1=0.6, y1=0.75,
-        fillcolor="#334155",
+        x0=0.40, y0=0.22, x1=0.62, y1=0.78,
+        fillcolor="rgba(51, 65, 85, 0.85)",
         line=dict(color="#64748B", width=2)
     )
 
     # Column label
     fig.add_annotation(
-        x=0.5, y=0.5, text="Column",
-        textangle=-90, showarrow=False,
+        x=0.51, y=0.50,
+        text="Column",
+        textangle=-90,
+        showarrow=False,
         font=dict(size=12, color="#94A3B8", family="Arial Black")
     )
 
-    # Feed arrow (left)
+    # Tray lines for visual interest
+    for y in [0.35, 0.45, 0.55, 0.65]:
+        fig.add_shape(
+            type="line",
+            x0=0.43, y0=y, x1=0.59, y1=y,
+            line=dict(color="#94A3B8", width=1, dash="dot")
+        )
+
+    # =========================
+    # CONDENSER (tighter coupling)
+    # =========================
+    fig.add_shape(
+        type="rect",
+        x0=0.68, y0=0.64, x1=0.78, y1=0.74,
+        fillcolor="#1E293B",
+        line=dict(color="#22C55E", width=2)
+    )
+
     fig.add_annotation(
-        x=0.4, y=0.5, ax=0.15, ay=0.5,
+        x=0.73, y=0.69,
+        text="Cond.",
+        showarrow=False,
+        font=dict(size=8, color="#22C55E")
+    )
+
+    # Overhead line from column top to condenser (softened corner)
+    fig.add_shape(
+        type="line",
+        x0=0.51, y0=0.78, x1=0.51, y1=0.80,
+        line=dict(color="#64748B", width=3)
+    )
+    fig.add_shape(
+        type="line",
+        x0=0.51, y0=0.80, x1=0.73, y1=0.80,
+        line=dict(color="#64748B", width=3)
+    )
+    fig.add_shape(
+        type="line",
+        x0=0.73, y0=0.80, x1=0.73, y1=0.74,
+        line=dict(color="#64748B", width=3)
+    )
+
+    # Distillate outlet from condenser
+    fig.add_annotation(
+        x=0.96, y=0.69, ax=0.78, ay=0.69,
         xref="x", yref="y", axref="x", ayref="y",
-        showarrow=True, arrowhead=2, arrowsize=1.5,
-        arrowwidth=3, arrowcolor="#3B82F6"
+        showarrow=True,
+        arrowhead=2,
+        arrowsize=1.5,
+        arrowwidth=3,
+        arrowcolor="#22C55E"
     )
-    fig.add_annotation(
-        x=0.05, y=0.52, text=f"<b>Feed</b><br>{feed_flow:.1f} kg/h",
-        showarrow=False, font=dict(size=11, color="#F8FAFC"),
-        xanchor="left"
+
+    # =========================
+    # REBOILER (raised, tighter)
+    # =========================
+    fig.add_shape(
+        type="rect",
+        x0=0.68, y0=0.12, x1=0.84, y1=0.22,
+        fillcolor="#1E293B",
+        line=dict(color="#F59E0B", width=2)
     )
+
     fig.add_annotation(
-        x=0.05, y=0.42, text=feed_comp.replace('\n', '<br>'),
-        showarrow=False, font=dict(size=10, color="#94A3B8"),
+        x=0.76, y=0.17,
+        text="Reboiler",
+        showarrow=False,
+        font=dict(size=8, color="#F59E0B")
+    )
+
+    # Bottoms line from column bottom to reboiler
+    fig.add_shape(
+        type="line",
+        x0=0.51, y0=0.22, x1=0.51, y1=0.17,
+        line=dict(color="#64748B", width=3)
+    )
+    fig.add_shape(
+        type="line",
+        x0=0.51, y0=0.17, x1=0.68, y1=0.17,
+        line=dict(color="#64748B", width=3)
+    )
+
+    # Bottoms product outlet from reboiler (tighter)
+    fig.add_annotation(
+        x=0.96, y=0.17, ax=0.84, ay=0.17,
+        xref="x", yref="y", axref="x", ayref="y",
+        showarrow=True,
+        arrowhead=2,
+        arrowsize=1.5,
+        arrowwidth=3,
+        arrowcolor="#F59E0B"
+    )
+
+    # =========================
+    # FEED ARROW (aligned at y=0.50)
+    # =========================
+    fig.add_annotation(
+        x=0.40, y=0.50, ax=0.15, ay=0.50,
+        xref="x", yref="y", axref="x", ayref="y",
+        showarrow=True,
+        arrowhead=2,
+        arrowsize=1.5,
+        arrowwidth=3,
+        arrowcolor="#3B82F6"
+    )
+
+    fig.add_annotation(
+        x=0.08, y=0.53,
+        text=f"<b>Feed</b><br>{feed_flow:.1f} kg/h",
+        showarrow=False,
+        font=dict(size=11, color="#F8FAFC"),
         xanchor="left"
     )
 
-    # Distillate arrow (top right)
     fig.add_annotation(
-        x=0.85, y=0.75, ax=0.6, ay=0.75,
-        xref="x", yref="y", axref="x", ayref="y",
-        showarrow=True, arrowhead=2, arrowsize=1.5,
-        arrowwidth=3, arrowcolor="#22C55E"
+        x=0.08, y=0.43,
+        text=feed_comp.replace('\n', '<br>'),
+        showarrow=False,
+        font=dict(size=10, color="#94A3B8"),
+        xanchor="left"
     )
+
+    # =========================
+    # DISTILLATE LABELS (aligned at y=0.69)
+    # =========================
     if distillate:
-        dist_comp = f"Water: {distillate['composition']['Water']:.0%}<br>Ethanol: {distillate['composition']['Ethanol']:.0%}"
+        dist_comp = (
+            f"Water: {distillate['composition']['Water']:.0%}<br>"
+            f"Ethanol: {distillate['composition']['Ethanol']:.0%}"
+        )
         fig.add_annotation(
-            x=0.88, y=0.77, text=f"<b>Distillate</b><br>{distillate['mass_flow']:.1f} kg/h",
-            showarrow=False, font=dict(size=11, color="#F8FAFC"),
+            x=0.98, y=0.72,
+            text=f"<b>Distillate</b><br>{distillate['mass_flow']:.1f} kg/h",
+            showarrow=False,
+            font=dict(size=10, color="#F8FAFC"),
             xanchor="left"
         )
         fig.add_annotation(
-            x=0.88, y=0.67, text=dist_comp,
-            showarrow=False, font=dict(size=10, color="#94A3B8"),
+            x=0.98, y=0.62,
+            text=dist_comp,
+            showarrow=False,
+            font=dict(size=9, color="#94A3B8"),
             xanchor="left"
         )
     else:
         fig.add_annotation(
-            x=0.88, y=0.75, text="Distillate",
-            showarrow=False, font=dict(size=11, color="#64748B"),
+            x=0.98, y=0.69,
+            text="Distillate",
+            showarrow=False,
+            font=dict(size=10, color="#64748B"),
             xanchor="left"
         )
 
-    # Bottoms arrow (bottom right)
-    fig.add_annotation(
-        x=0.85, y=0.25, ax=0.6, ay=0.25,
-        xref="x", yref="y", axref="x", ayref="y",
-        showarrow=True, arrowhead=2, arrowsize=1.5,
-        arrowwidth=3, arrowcolor="#F59E0B"
-    )
+    # =========================
+    # BOTTOMS LABELS (aligned at y=0.17)
+    # =========================
     if bottoms:
-        bot_comp = f"Water: {bottoms['composition']['Water']:.0%}<br>Ethanol: {bottoms['composition']['Ethanol']:.0%}"
+        bot_comp = (
+            f"Water: {bottoms['composition']['Water']:.0%}<br>"
+            f"Ethanol: {bottoms['composition']['Ethanol']:.0%}"
+        )
         fig.add_annotation(
-            x=0.88, y=0.27, text=f"<b>Bottoms</b><br>{bottoms['mass_flow']:.1f} kg/h",
-            showarrow=False, font=dict(size=11, color="#F8FAFC"),
+            x=0.98, y=0.20,
+            text=f"<b>Bottoms</b><br>{bottoms['mass_flow']:.1f} kg/h",
+            showarrow=False,
+            font=dict(size=10, color="#F8FAFC"),
             xanchor="left"
         )
         fig.add_annotation(
-            x=0.88, y=0.17, text=bot_comp,
-            showarrow=False, font=dict(size=10, color="#94A3B8"),
+            x=0.98, y=0.10,
+            text=bot_comp,
+            showarrow=False,
+            font=dict(size=9, color="#94A3B8"),
             xanchor="left"
         )
     else:
         fig.add_annotation(
-            x=0.88, y=0.25, text="Bottoms",
-            showarrow=False, font=dict(size=11, color="#64748B"),
+            x=0.98, y=0.17,
+            text="Bottoms",
+            showarrow=False,
+            font=dict(size=10, color="#64748B"),
             xanchor="left"
         )
 
+    # =========================
+    # LAYOUT
+    # =========================
     fig.update_layout(
         xaxis=dict(range=[0, 1.15], showgrid=False, zeroline=False, visible=False),
         yaxis=dict(range=[0, 1], showgrid=False, zeroline=False, visible=False),
         plot_bgcolor="#0F172A",
         paper_bgcolor="#0F172A",
-        margin=dict(l=0, r=0, t=0, b=0),
-        height=350
+        margin=dict(l=0, r=0, t=10, b=0),
+        height=420
     )
 
     return fig
@@ -292,13 +422,67 @@ def render_result_card(title, mass_flow, temperature, pressure, water_pct, ethan
     """, unsafe_allow_html=True)
 
 
+def get_certainty_info() -> dict:
+    """
+    Return the current certainty metadata for the Streamlit MVP.
+    """
+    certainty_percent = 30  # Foundational level - honest about where we are
+
+    if certainty_percent >= 80:
+        status = "High Fidelity"
+    elif certainty_percent >= 60:
+        status = "Moderate Fidelity"
+    elif certainty_percent >= 40:
+        status = "Intermediate Model"
+    else:
+        status = "Foundational Model"
+
+    assumptions = [
+        "Thermophysical properties via CoolProp",
+        "User-defined component split fractions (not VLE-derived)",
+        "Binary system only",
+        "Steady-state operation",
+        "No pressure drop across column",
+    ]
+
+    return {
+        "certainty_percent": certainty_percent,
+        "status": status,
+        "assumptions": assumptions,
+    }
+
+
+def render_certainty_index() -> None:
+    """
+    Render the Certainty Index section.
+    """
+    info = get_certainty_info()
+
+    st.markdown('<div class="section-header">Certainty Index</div>', unsafe_allow_html=True)
+    st.caption("Model fidelity based on current assumptions")
+
+    bar_col, pct_col = st.columns([4, 1])
+
+    with bar_col:
+        st.progress(info["certainty_percent"] / 100)
+
+    with pct_col:
+        st.markdown(f"**{info['certainty_percent']}%**")
+
+    st.markdown(f"**Status:** {info['status']}")
+
+    st.markdown("**Assumptions**")
+    for assumption in info["assumptions"]:
+        st.markdown(f"- {assumption}")
+
+
 # ============ SIDEBAR ============
 with st.sidebar:
     # Logo and branding header
     st.markdown('<div class="sidebar-header">', unsafe_allow_html=True)
     st.image("assets/logo.png", width=80)
     st.markdown('<div class="sidebar-title">EQUILIBRIA</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-subtitle">Process Simulation</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-subtitle">Process Simulator</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # About section
@@ -325,6 +509,7 @@ with st.sidebar:
     # Footer
     st.caption("Technical Preview • v0.1.0")
 
+
 # ============ MAIN CONTENT ============
 
 # Header
@@ -342,6 +527,7 @@ if 'results' not in st.session_state:
 # Layout
 left_col, right_col = st.columns([1.2, 1])
 
+# ============ LEFT COLUMN - INPUTS ============
 with left_col:
     # Feed Stream Parameters
     st.markdown('<div class="section-header">Feed Stream Parameters</div>', unsafe_allow_html=True)
@@ -430,7 +616,8 @@ with left_col:
         except Exception as e:
             st.error(f"Simulation error: {str(e)}")
 
-# Right column - Results
+
+# ============ RIGHT COLUMN - RESULTS ============
 with right_col:
     st.markdown('<div class="section-header">Simulation Results</div>', unsafe_allow_html=True)
 
@@ -451,11 +638,18 @@ with right_col:
 
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
+    # Spacing before Certainty Index
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+    # Certainty Index
+    render_certainty_index()
+
     # Result cards
     if st.session_state.results:
         results = st.session_state.results
 
         col1, col2 = st.columns(2)
+
         with col1:
             render_result_card(
                 title="Distillate",
@@ -466,6 +660,7 @@ with right_col:
                 ethanol_pct=f"{results['distillate']['composition']['Ethanol']:.1%}",
                 color="#22C55E"
             )
+
         with col2:
             render_result_card(
                 title="Bottoms",
@@ -477,10 +672,11 @@ with right_col:
                 color="#F59E0B"
             )
 
-        # Trust signal
-        st.markdown('<div class="trust-signal">✓ Mass and energy balance checks enabled</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="trust-signal">✓ Mass and energy balance checks enabled</div>',
+            unsafe_allow_html=True
+        )
 
-        # Raw API response
         with st.expander("View raw API response"):
             st.json(results)
     else:
