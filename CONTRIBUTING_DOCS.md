@@ -152,7 +152,7 @@ Provides a reproducible code example using triple angle brackets (`>>>`) in doct
 
 ---
 
-## 🧠 Optional Sections
+## Optional Sections
 
 ### Notes
 
