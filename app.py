@@ -638,12 +638,6 @@ with right_col:
 
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-    # Spacing before Certainty Index
-    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-
-    # Certainty Index
-    render_certainty_index()
-
     # Result cards
     if st.session_state.results:
         results = st.session_state.results
@@ -676,8 +670,13 @@ with right_col:
             '<div class="trust-signal">✓ Mass and energy balance checks enabled</div>',
             unsafe_allow_html=True
         )
-
-        with st.expander("View raw API response"):
-            st.json(results)
     else:
         st.info("Configure parameters and run the simulation to see results.")
+
+    # Certainty Index
+    render_certainty_index()
+
+    # Raw API response — moved to bottom (debug info)
+    if st.session_state.results:
+        with st.expander("View raw API response"):
+            st.json(st.session_state.results)
