@@ -6,6 +6,7 @@ This MVP implements a binary distillation column with a structured backend, vali
 
 **Tech Stack:** Python · FastAPI · Streamlit · pytest · CoolProp
 
+![Equilibria Demo](assets/demo.gif)
 ---
 ## System Overview
 
