@@ -6,7 +6,10 @@ import uuid
 from contextvars import ContextVar
 from typing import Dict
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends, HTTPException  # add Depends, HTTPException
+from sqlalchemy.orm import Session
+from backend.database import get_db, init_db, crud
+from backend.database.schemas import SimulationInput, SimulationRunCreate, SimulationRunResponse
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
@@ -189,8 +192,94 @@ async def simulate_distillation(request: DistillationRequest):
 async def root():
     return {"message": "Equilibria API is running.", "version": APP_VERSION}
 
+
+# =====================================
+# SIMULATION PERSISTENCE ENDPOINTS
+# =====================================
+@app.post("/simulations", response_model=SimulationRunResponse)
+def run_and_save_simulation(
+        inputs: SimulationInput,
+        db: Session = Depends(get_db)
+):
+    """Run a simulation and save results to database."""
+
+    column = simulate_distillation_column(
+        name=inputs.name or "Simulation",
+        feed_flow_rate=inputs.feed_flow_rate,
+        feed_temperature=inputs.feed_temperature,
+        feed_pressure=inputs.feed_pressure,
+        feed_composition=inputs.feed_composition,
+        distillate_split=inputs.distillate_split,
+        bottoms_split=inputs.bottoms_split,
+        distillate_temperature=inputs.distillate_temperature,
+        bottoms_temperature=inputs.bottoms_temperature,
+        pressure=inputs.pressure,
+    )
+
+    distillate = column.outlet_streams[0]
+    bottoms = column.outlet_streams[1]
+
+    output_results = {
+        "distillate": {
+            "mass_flow": distillate.flow_rate,
+            "temperature": distillate.temperature,
+            "pressure": distillate.pressure,
+            "composition": distillate.composition,
+        },
+        "bottoms": {
+            "mass_flow": bottoms.flow_rate,
+            "temperature": bottoms.temperature,
+            "pressure": bottoms.pressure,
+            "composition": bottoms.composition,
+        },
+    }
+
+    run_data = SimulationRunCreate(
+        name=inputs.name,
+        input_payload=inputs.model_dump(),
+        output_results=output_results,
+        certainty_score=30.0,  # Fixed fidelity score for Foundational mode
+    )
+
+    return crud.create_simulation_run(db, run_data)
+
+
+@app.get("/simulations", response_model=list[SimulationRunResponse])
+def list_simulations(
+        skip: int = 0,
+        limit: int = 100,
+        db: Session = Depends(get_db)
+):
+    """List all saved simulation runs."""
+    return crud.get_simulation_runs(db, skip=skip, limit=limit)
+
+
+@app.get("/simulations/{run_id}", response_model=SimulationRunResponse)
+def get_simulation(
+        run_id: str,
+        db: Session = Depends(get_db)
+):
+    """Get a single simulation run by ID."""
+    run = crud.get_simulation_run(db, run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Simulation not found")
+    return run
+
+
+@app.delete("/simulations/{run_id}")
+def delete_simulation(
+        run_id: str,
+        db: Session = Depends(get_db)
+):
+    """Delete a simulation run."""
+    deleted = crud.delete_simulation_run(db, run_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Simulation not found")
+    return {"deleted": True}
+
 @app.on_event("startup")
 async def startup_event():
+    init_db()  # <-- Add this line
     logger.info("Equilibria Technology API starting up")
     logger.info("Distillation simulation endpoint ready")
     logger.info("API documentation available at /docs")
