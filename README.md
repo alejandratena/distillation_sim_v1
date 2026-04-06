@@ -1,51 +1,94 @@
 # Equilibria: Distillation Simulation Platform
 
-Equilibria is a modular chemical engineering simulation platform for modeling separation processes with progressive realism — a design approach that allows systems to evolve from simplified academic assumptions to industry-grade physical accuracy.
+**Most process simulators hide their assumptions. Equilibria makes model fidelity explicit.**
 
-This MVP implements a binary distillation column with a structured backend, validated unit operations, and an interactive frontend for exploring system behavior.
+Equilibria is a modular chemical engineering simulation platform for modeling separation processes with **progressive realism** — a design approach where systems evolve from simplified academic assumptions to industry-grade physical accuracy.
 
 **Tech Stack:** Python · FastAPI · Streamlit · pytest · CoolProp
 
 ![Equilibria Demo](assets/demo.gif)
+
 ---
+
+## Why This Matters
+
+Engineers today choose between:
+
+- **Simplified academic tools** — fast and accessible, but disconnected from real-world behavior
+- **Enterprise simulators** — accurate, but expensive, opaque, and slow to learn
+
+**Equilibria bridges this gap with progressive realism.**
+
+Model fidelity is explicit, measurable, and evolves with the user. You always know what assumptions you're making — and what it would take to remove them.
+
+---
+
+## Current Capabilities
+
+- **Binary Distillation Simulation** — Configure feed conditions, operating parameters, and split fractions with real-time results
+- **Certainty Engine** — Structured model fidelity tracking (Foundational → Industry+)
+- **Validated Mass & Energy Balances** — Tolerance-based checks ensure physical consistency
+- **CoolProp Integration** — Real thermophysical properties, not hardcoded constants
+- **Clean API** — FastAPI backend with Swagger docs at `/docs`
+
+---
+
+## Certainty Engine
+
+The Certainty Engine provides a structured proxy for **model fidelity** — answering:
+
+> *How much of the relevant physical reality does this simulation currently capture?*
+
+This is a **relative fidelity index**, not formal statistical uncertainty quantification.
+
+### Fidelity Dimensions
+
+Model fidelity is evaluated across four dimensions:
+
+| Dimension | Weight | Description |
+|-----------|--------|-------------|
+| Thermodynamic Rigor | 40% | VLE models, activity coefficients, EOS |
+| Transport & Hydraulics | 25% | Pressure drops, mass transfer, tray efficiency |
+| Operational Realism | 20% | Startup behavior, control systems, degradation |
+| Validation Maturity | 15% | Balance checks, experimental correlation, plant data |
+
+### Fidelity Levels
+
+1. **Foundational (≤30%)** — Simplified, balance-validated
+2. **Intermediate (≤55%)** — Non-ideal behavior, energy coupling
+3. **Advanced Academic (≤75%)** — Pressure effects, complex phase behavior
+4. **Industry Sim (≤90%)** — Safety margins, failure modes
+5. **Industry+ (≤98%)** — Toward plant validation and uncertainty-aware modeling
+
+**Current State:** Foundational (~30%)
+
+---
+
 ## System Overview
 
-Equilibria is built as a composable simulation system — unit operations encapsulate 
-physical behavior independently and can be assembled into flowsheets without tight 
-coupling between layers. The backend handles simulation execution and exposes endpoints 
-via FastAPI, while the core layer defines the unit operations themselves (`DistillationColumn`, 
-`HeatExchanger`, etc.) with embedded mass and energy balances. A separate simulation layer 
-orchestrates flowsheet logic and stream propagation, keeping unit op logic reusable across 
-different process configurations. The Streamlit frontend sits on top as a lightweight 
-interface for exploring system behavior.
+Equilibria is built as a **composable simulation system**. Unit operations encapsulate physical behavior independently and can be assembled into flowsheets without tight coupling.
 
-### Architecture Layers
+### Architecture
 
-- **Backend (FastAPI)** — Handles simulation execution and exposes endpoints for flowsheet interaction
-- **Core Layer (`backend/core/`)** — Defines unit operations (e.g., `DistillationColumn`, `HeatExchanger`) with embedded mass and energy balances
-- **Simulation Layer (`backend/simulation/`)** — Orchestrates flowsheet logic, stream propagation, and system-level validation
-- **Frontend (Streamlit)** — Provides a lightweight interface for interacting with the simulation
+```
+Streamlit UI  →  FastAPI Backend  →  Simulation Layer  →  Domain Core
+   (app.py)        (main.py)        (flowsheet.py)      (Stream, UnitOps)
+```
 
-### Design Priorities
+| Layer | Responsibility |
+|-------|----------------|
+| **Frontend** | Interactive UI for simulation configuration and results |
+| **Backend** | API endpoints, validation, and simulation orchestration |
+| **Simulation** | Flowsheet logic, stream propagation, system-level validation |
+| **Core** | Unit operations with embedded mass and energy balances |
+| **Certainty** | Model fidelity scoring across defined dimensions |
 
-- **Modularity** — unit operations can be extended or replaced independently
-- **Testability** — each unit operation is validated with pytest
-- **Transparency** — explicit balance checks with defined tolerances
-- **Extensibility** — architecture supports future non-ideal and ML-driven models
+### Design Decisions
 
----
-
-## Design Decisions
-
-FastAPI was chosen over Flask for its native Pydantic type validation and support for 
-async scaling as the platform grows. Streamlit handles the MVP frontend — it was the 
-fastest path to an interactive UI, with a React replacement planned for production. 
-
-On the simulation side, balance validation uses tolerance-based checks rather than strict 
-equality because floating-point arithmetic makes exact comparison unreliable at industry
-precision. CoolProp drives thermophysical property evaluation, which is what enables the 
-platform's core promise: a clean path from ideal to real-fluid behavior without rearchitecting 
-the system.
+- **FastAPI over Flask** — Native Pydantic validation and async scalability
+- **Tolerance-based balance checks** — Reliable handling of floating-point precision
+- **CoolProp for thermophysics** — Enables transition from ideal to real-fluid modeling
+- **Certainty as first-class feature** — Model assumptions are surfaced, not hidden
 
 ---
 
@@ -57,42 +100,27 @@ git clone git@github.com:alejandratena/distillation_sim_v1.git
 cd distillation_sim_v1
 ```
 
-### 2. Create and activate a virtual environment
-
-**Mac/Linux:**
+### 2. Set up environment
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate
-```
-
-**Windows:**
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-```
-
-### 3. Install dependencies
-```bash
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
----
+### 3. Run the application
 
-## Running the Application
-
-> ⚠️ Activate your virtual environment in both terminals before starting.
-
-**Terminal 1 — Backend (FastAPI):**
+**Terminal 1 — Backend:**
 ```bash
 uvicorn main:app --reload
 ```
-Runs at: http://localhost:8000
+- API: http://localhost:8000
+- Docs: http://localhost:8000/docs
 
-**Terminal 2 — Frontend (Streamlit):**
+**Terminal 2 — Frontend:**
 ```bash
 streamlit run app.py
 ```
-Runs at: http://localhost:8501
+- UI: http://localhost:8501
 
 ---
 
@@ -101,44 +129,52 @@ Runs at: http://localhost:8501
 pytest backend/tests/
 ```
 
-The test suite validates:
-- Mass balance consistency across unit operations
-- Energy balance behavior under defined tolerances
-- System-level integration between connected units
+Validates mass balance consistency, energy balance tolerances, and system-level integration.
 
 ---
 
 ## Project Structure
 ```
-distillation_sim_v1/
+equilibria/
 ├── backend/
-│   ├── core/          # Unit operations and base classes
-│   ├── simulation/    # Flowsheet orchestration logic
-│   └── tests/         # Pytest validation suite
-├── main.py            # FastAPI entry point
-├── app.py             # Streamlit frontend
-├── requirements.txt
-└── README.md
+│   ├── core/           # Unit operations and base classes
+│   ├── simulation/     # Flowsheet orchestration
+│   ├── certainty/      # Certainty Engine
+│   └── tests/          # pytest suite
+├── main.py             # FastAPI entry point
+├── app.py              # Streamlit frontend
+└── requirements.txt
 ```
 
 ---
 
 ## Roadmap
 
-- Non-ideal thermodynamics (γ–φ, EOS-based models)
-- Recycle streams and convergence algorithms
-- React-based frontend with interactive flowsheet builder
+### Shipped
+- Binary distillation with CoolProp integration
+- Mass and energy balance validation
+- Certainty Engine (multi-dimensional fidelity scoring)
+- FastAPI backend with Swagger docs
+- Streamlit frontend with real-time results
+
+### Next
+- Activity coefficient models (NRTL / UNIQUAC)
 - Simulation persistence (database integration)
-- ML-assisted parameter estimation and optimization
-- "Progressive realism" UI controls for toggling model assumptions
+- Experiment-based mixing rules
+
+###  Future
+- Recycle streams and convergence algorithms
+- React-based flowsheet builder
+- ML-assisted parameter estimation
+- Progressive realism UI controls
 
 ---
 
 ## Contributing
 
 - Use small, descriptive commits grouped by functionality
-- Avoid committing system/IDE files (`.idea/`, `__pycache__/`, `.DS_Store`)
-- Document new modules or major changes with inline comments or README updates
+- Avoid committing system files (`.idea/`, `__pycache__/`, `.DS_Store`)
+- Document meaningful changes in code or README
 
 ---
 
