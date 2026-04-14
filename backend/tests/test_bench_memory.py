@@ -396,4 +396,24 @@ def test_stress_many_units():
     try:
         # Create 1000 units
         for i in range(1000):
-            inlet = make_stream(100, 60, 101.3
+            inlet = make_stream(100, 60, 101.3, {"Water": 0.7, "Ethanol": 0.3})
+            outlet = make_stream(100, 60, 101.3, {"Water": 0.7, "Ethanol": 0.3})
+            unit = FeedTank(f"Tank_{i}", [inlet], [outlet])
+            unit.mass_balance()
+            unit.energy_balance()
+            units.append(unit)
+
+    finally:
+        duration = time.time() - start_time
+        final_memory = process.memory_info().rss
+        memory_increase = final_memory - initial_memory
+
+        # 1000 units should complete in under 30 seconds
+        assert duration < 30.0, (
+            f"Stress test took {duration:.1f}s for 1000 units, expected <30.0s"
+        )
+
+        # Memory increase should stay under 200MB for 1000 units
+        assert memory_increase < 200 * 1024 * 1024, (
+            f"Stress test used {memory_increase / 1024 / 1024:.1f}MB for 1000 units"
+        )
