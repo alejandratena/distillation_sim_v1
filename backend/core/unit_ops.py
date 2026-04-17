@@ -235,61 +235,55 @@ class DistillationColumn(UnitOperation):
             "tolerance": tolerance
         }
 
-
     def energy_balance(self):
-        """Validates energy conservation across the distillation column.
+        """Compute the net heat duty required by the distillation column.
 
-                Checks overall energy balance including reboiler and condenser duties:
-                H_feed + Q_reboiler + Q_condenser = H_distillate + H_bottoms
+        Derives Q_net from the enthalpy difference between outlet and inlet
+        streams. This is the total external heat input the column requires
+        from utilities (reboiler minus condenser).
 
-                Raises
-                ------
-                BalanceError
-                    If energy is not conserved within 1 kJ/h tolerance
+        Q_net = (H_distillate + H_bottoms) - H_feed
 
-                Notes
-                -----
-                - Q_reboiler is positive (heat added)
-                - Q_condenser is negative (heat removed)
-                - Prints detailed energy balance for debugging
-                """
+        A positive Q_net means the column requires net heat input (typical).
+        A negative Q_net means the column is net heat-releasing (unusual).
 
+        Returns
+        -------
+        dict
+            H_feed, H_distillate, H_bottoms, Q_net [kJ/h]
 
-        """Validate energy conservation across the distillation column."""
+        Notes
+        -----
+        The energy balance closes by definition here because Q_net is derived
+        from stream enthalpies rather than independently specified. This is an
+        honest accounting of the current model's capability: it computes the
+        required duty from thermodynamic state, but does not independently
+        verify that duty against equipment models.
+
+        Next evolution: specify Q_reboiler and Q_condenser from equipment
+        models (e.g., partial vaporization enthalpy) and check that
+        Q_reboiler + Q_condenser == Q_net within tolerance — that would be
+        an independently verifiable balance.
+
+        Raises
+        ------
+        ThermodynamicError
+            If enthalpy calculation fails for any stream
+        """
+
         H_feed = self.inlet_streams[0].enthalpy()
-        H_top = self.outlet_streams[0].enthalpy()
-        H_bottom = self.outlet_streams[1].enthalpy()
-        tolerance = 1
+        H_distillate = self.outlet_streams[0].enthalpy()
+        H_bottoms = self.outlet_streams[1].enthalpy()
 
-        Q_reboiler = 1200  # kJ/h
-        Q_condenser = -1100  # kJ/h
-
-        lhs = H_feed + Q_reboiler + Q_condenser
-        rhs = H_top + H_bottom
-
-            # apply correction if needed
-        if rhs != 0:
-            correction_factor = lhs / rhs
-            H_top *= correction_factor
-            H_bottom *= correction_factor
-            rhs = H_top + H_bottom
-
-        if abs(lhs - rhs) >= tolerance:
-            raise BalanceError(
-                f"Energy imbalance in {self.name}",
-                {
-                    "H_in": H_feed,
-                    "H_out": rhs,
-                    "difference": lhs - rhs,
-                    "tolerance": tolerance
-                }
-            )
+        Q_net = (H_distillate + H_bottoms) - H_feed
 
         return {
-            "inlet": lhs,
-            "outlet": rhs,
-            "difference": lhs - rhs,
-            "tolerance": tolerance
+            "inlet": H_feed,
+            "outlet": H_distillate + H_bottoms,
+            "difference": (H_distillate + H_bottoms) - H_feed,
+            "Q_net": Q_net,
+            "tolerance": None,
+            "mode": "computed_not_validated"
         }
 
 
