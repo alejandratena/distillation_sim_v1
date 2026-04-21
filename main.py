@@ -12,6 +12,7 @@ from backend.database import get_db, init_db, crud
 from backend.database.schemas import SimulationInput, SimulationRunCreate, SimulationRunResponse
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.core.base import Stream
 from backend.core.exceptions import BalanceError, DomainValidationError, ThermodynamicError
@@ -41,6 +42,14 @@ app = FastAPI(
     title="Equilibria Technology API",
     description="Distillation column simulation endpoint",
     version=APP_VERSION
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.middleware("http")
