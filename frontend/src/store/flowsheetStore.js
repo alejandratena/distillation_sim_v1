@@ -23,7 +23,9 @@ const useFlowsheetStore = create((set) => ({
     set((state) => ({ edges: applyEdgeChanges(changes, state.edges) })),
 
   onConnect: (connection) =>
-    set((state) => ({ edges: addEdge(connection, state.edges) })),
+  set((state) => ({
+    edges: addEdge({ ...connection, type: 'stream' }, state.edges),
+  })),
 
   addNode: (node) =>
     set((state) => ({ nodes: [...state.nodes, node] })),
